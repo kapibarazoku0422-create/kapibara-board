@@ -15,6 +15,7 @@ const schema = z.object({
   SESSION_SECRET: z.string().min(32).optional(),
   GOOGLE_CLIENT_ID: z.string().min(1).optional(),
   GOOGLE_CLIENT_SECRET: z.string().min(1).optional(),
+  ADMIN_EMAILS: z.string().default(''),
   DEMO_MODE: booleanString,
   TRUST_PROXY: booleanString,
 });
@@ -43,6 +44,7 @@ export const config = {
   googleClientId: env.GOOGLE_CLIENT_ID,
   googleClientSecret: env.GOOGLE_CLIENT_SECRET,
   googleAuthEnabled: Boolean(env.GOOGLE_CLIENT_ID && env.GOOGLE_CLIENT_SECRET),
+  adminEmails: env.ADMIN_EMAILS.split(',').map((email) => email.trim().toLowerCase()).filter(Boolean),
   demoMode: env.DEMO_MODE || !env.DATABASE_URL,
   trustProxy: env.TRUST_PROXY,
 };

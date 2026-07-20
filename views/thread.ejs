@@ -1,53 +1,56 @@
 <%- include('partials/head') %>
-<main id="main" class="inner-main thread-page">
+<main id="main" class="inner-main thread-page" data-live-thread="<%= thread.id %>">
   <div class="shell thread-shell">
-    <nav class="breadcrumbs" aria-label="パンくず"><a href="/">ホーム</a><span>/</span><a href="/boards/<%= thread.categorySlug %>"><%= thread.categoryName %></a><span>/</span><b>スレッド</b></nav>
+    <nav class="breadcrumbs" aria-label="パンくず"><a href="/">ホーム</a><span>/</span><a href="/boards/<%= thread.categorySlug %>"><%= thread.categoryName %></a><span>/</span><b>話題</b></nav>
     <article class="topic-panel">
       <div class="topic-meta">
         <a class="category-label category-label--<%= thread.categorySlug %>" href="/boards/<%= thread.categorySlug %>"><i></i><%= thread.categoryName %></a>
-        <% if (thread.isPinned) { %><span class="pinned-label">運営ピック</span><% } %>
+        <% if (thread.isPinned) { %><span class="pinned-label">おすすめ</span><% } %>
         <time datetime="<%= thread.createdAt.toISOString() %>"><%= formatDate(thread.createdAt) %></time>
       </div>
       <h1><%= thread.title %></h1>
       <div class="topic-author">
         <%- include('partials/avatar', { avatar: thread.authorAvatar, initial: thread.authorInitial, size: 'large' }) %>
-        <div><b><%= thread.authorName %></b><span>トピックを作成</span></div>
+        <div><b><%= thread.authorName %></b><span>この話題を投稿</span></div>
       </div>
       <div class="rich-body"><%= thread.body %></div>
       <div class="topic-tags"><% thread.tags.forEach(function(tag) { %><a href="/search?q=<%= encodeURIComponent(tag) %>">#<%= tag %></a><% }) %></div>
       <div class="topic-actions">
-        <form method="post" action="/threads/<%= thread.id %>/like"><input type="hidden" name="_csrf" value="<%= csrfToken %>"><button class="reaction-button<%= thread.likedByViewer ? ' is-active' : '' %>" type="submit"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="m12 5 7 8h-4v6H9v-6H5l7-8Z"/></svg><span><%= thread.likedByViewer ? '共感しました' : '共感' %></span><b><%= formatNumber(thread.likeCount) %></b></button></form>
+        <form method="post" action="/threads/<%= thread.id %>/like"><input type="hidden" name="_csrf" value="<%= csrfToken %>"><button class="reaction-button<%= thread.likedByViewer ? ' is-active' : '' %>" type="submit"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="m12 5 7 8h-4v6H9v-6H5l7-8Z"/></svg><span><%= thread.likedByViewer ? 'いいね済み' : 'いいね' %></span><b><%= formatNumber(thread.likeCount) %></b></button></form>
         <form method="post" action="/threads/<%= thread.id %>/bookmark"><input type="hidden" name="_csrf" value="<%= csrfToken %>"><button class="plain-action<%= thread.bookmarkedByViewer ? ' is-active' : '' %>" type="submit"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M6 3h12v18l-6-4-6 4V3Z"/></svg><%= thread.bookmarkedByViewer ? '保存済み' : 'あとで読む' %></button></form>
         <button class="plain-action share-button" type="button" data-share-title="<%= thread.title %>"><svg aria-hidden="true" viewBox="0 0 24 24"><circle cx="18" cy="5" r="2"/><circle cx="6" cy="12" r="2"/><circle cx="18" cy="19" r="2"/><path d="m8 11 8-5m-8 7 8 5"/></svg>共有</button>
-        <span class="topic-views"><%= formatNumber(thread.viewCount) %> views</span>
+        <% if (currentUser) { %><details class="report-menu"><summary class="plain-action">通報</summary><form method="post" action="/threads/<%= thread.id %>/report"><input type="hidden" name="_csrf" value="<%= csrfToken %>"><select name="reason" required><option value="">理由を選ぶ</option><option value="spam">スパム</option><option value="harassment">嫌がらせ</option><option value="privacy">個人情報</option><option value="dangerous">危険な内容</option><option value="other">その他</option></select><textarea name="detail" rows="2" placeholder="補足があればどうぞ"></textarea><button type="submit">管理者に知らせる</button></form></details><% } %>
+        <span class="topic-views"><%= formatNumber(thread.viewCount) %>回見られました</span>
       </div>
     </article>
 
     <section class="reply-section" aria-labelledby="reply-heading">
-      <div class="reply-heading"><div><p>CONVERSATION</p><h2 id="reply-heading"><%= formatNumber(thread.posts.length) %>件の返信</h2></div><a href="#reply">返信を書く ↓</a></div>
-      <div class="reply-list">
+      <div class="reply-heading"><div><p>CONVERSATION <span class="live-dot">LIVE</span></p><h2 id="reply-heading"><span data-reply-count><%= formatNumber(thread.posts.length) %></span>件のコメント</h2></div><% if (thread.status !== 'locked') { %><a href="#reply">コメントを書く ↓</a><% } %></div>
+      <div class="reply-list" id="live-replies" data-current-user="<%= currentUser?.id || '' %>">
         <% thread.posts.forEach(function(post, index) { %>
-          <article class="reply-card<%= post.isSolution ? ' reply-card--solution' : '' %>" id="<%= index === thread.posts.length - 1 ? 'latest' : 'post-' + post.number %>">
+          <article class="reply-card<%= post.isSolution ? ' reply-card--solution' : '' %>" id="<%= index === thread.posts.length - 1 ? 'latest' : 'post-' + post.number %>" data-post-id="<%= post.id %>">
             <div class="reply-rail"><%- include('partials/avatar', { avatar: post.authorAvatar, initial: post.authorInitial, size: 'medium' }) %><span></span></div>
             <div class="reply-content">
               <header><div><b><%= post.authorName %></b><% if (post.authorRole !== 'member') { %><span class="role-badge"><%= post.authorRole === 'admin' ? '管理者' : 'モデレーター' %></span><% } %><% if (post.isSolution) { %><span class="solution-badge">✓ 参考になった返信</span><% } %></div><div><time datetime="<%= post.createdAt.toISOString() %>" data-relative="<%= post.createdAt.toISOString() %>"><%= formatDate(post.createdAt) %></time><a href="#post-<%= post.number %>">#<%= post.number %></a></div></header>
               <div class="rich-body rich-body--reply"><%= post.body %></div>
-              <footer><button type="button" class="mini-action">♡ ありがとう</button><button type="button" class="mini-action quote-button" data-author="<%= post.authorName %>">↩ 返信</button></footer>
+              <footer><button type="button" class="mini-action">♡ いいね</button><button type="button" class="mini-action quote-button" data-author="<%= post.authorName %>">↩ この人に返信</button></footer>
             </div>
           </article>
         <% }) %>
       </div>
 
       <div class="composer" id="reply">
-        <% if (currentUser) { %>
-          <div class="composer-heading"><%- include('partials/avatar', { avatar: currentUser.avatarUrl, initial: currentUser.displayName.slice(0, 1), size: 'medium' }) %><div><b><%= currentUser.displayName %></b><span>として返信</span></div></div>
+        <% if (thread.status === 'locked') { %>
+          <div class="login-prompt"><span class="welcome-spark">🔒</span><h2>この話題は受付を終了しました</h2><p>これまでのコメントはそのまま読めます。</p></div>
+        <% } else if (currentUser) { %>
+          <div class="composer-heading"><%- include('partials/avatar', { avatar: currentUser.avatarUrl, initial: currentUser.displayName.slice(0, 1), size: 'medium' }) %><div><b><%= currentUser.displayName %></b><span>さんとしてコメント</span></div></div>
           <form method="post" action="/threads/<%= thread.id %>/posts">
             <input type="hidden" name="_csrf" value="<%= csrfToken %>">
-            <textarea name="body" id="reply-body" minlength="2" maxlength="10000" rows="6" placeholder="あなたの考えを、相手に届く言葉で書いてみましょう。" required></textarea>
-            <div class="composer-bottom"><span><b data-character-count>0</b> / 10,000</span><button class="button button--primary" type="submit">返信を投稿 <span>↗</span></button></div>
+            <textarea name="body" id="reply-body" rows="6" placeholder="思ったことを気軽に書いてみよう。" required></textarea>
+            <div class="composer-bottom"><span>送る前にひと呼吸だけ。</span><button class="button button--primary" type="submit">コメントする <span>↗</span></button></div>
           </form>
         <% } else { %>
-          <div class="login-prompt"><span class="welcome-spark">✦</span><h2>会話に参加しませんか？</h2><p>Googleアカウントですぐに返信できます。</p><a class="button button--primary" href="/auth/google">Googleで参加する</a></div>
+          <div class="login-prompt"><span class="welcome-spark">✦</span><h2>あなたも話してみる？</h2><p>Googleアカウントですぐにコメントできます。</p><a class="button button--primary" href="/auth/google">Googleではじめる</a></div>
         <% } %>
       </div>
     </section>

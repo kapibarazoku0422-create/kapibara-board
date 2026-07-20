@@ -1,6 +1,6 @@
 import type { Profile } from 'passport-google-oauth20';
 import { pool } from './db.js';
-import type { Category, HomeData, Post, ThreadDetail, ThreadSummary, User } from './types.js';
+import type { AdminDashboard, Category, ConversationSummary, DirectMessage, HomeData, MemberSummary, Post, ThreadDetail, ThreadSummary, User } from './types.js';
 
 const demoUsers: User[] = [
   { id: 'demo-a', email: 'aoi@example.com', displayName: 'あおい', avatarUrl: null, role: 'member' },
@@ -9,6 +9,7 @@ const demoUsers: User[] = [
 ];
 
 const demoCategories: Category[] = [
+  { id: 6, slug: 'general', name: '総合', description: 'すべてのジャンルの話題が集まる場所', icon: '◎', color: '#d35400', threadCount: 3951 },
   { id: 1, slug: 'lounge', name: 'ラウンジ', description: '日常のこと、ふと思ったこと', icon: '☕', color: '#ff6b4a', threadCount: 1284 },
   { id: 2, slug: 'technology', name: 'テクノロジー', description: '開発・AI・ガジェットの話', icon: '⌘', color: '#6c5ce7', threadCount: 842 },
   { id: 3, slug: 'creative', name: 'クリエイティブ', description: '写真、音楽、文章、ものづくり', icon: '✦', color: '#e84393', threadCount: 516 },
@@ -18,7 +19,7 @@ const demoCategories: Category[] = [
 
 const now = Date.now();
 const demoThreads: ThreadSummary[] = [
-  makeDemo('11111111-1111-4111-8111-111111111111', '最近「余白」を大切にしている人、いますか？', '予定を詰めすぎない日を作ったら、考えが少しずつ整ってきました。みなさんの余白の作り方を聞きたいです。', 1, demoUsers[0]!, 48, 3120, 186, ['暮らし', '雑談'], 18, true),
+  makeDemo('11111111-1111-4111-8111-111111111111', '最近ハマっているもの、ゆるく教えて！', 'ゲームでも音楽でも食べ物でも何でもOK。最近つい時間を忘れて楽しんでいるものを教えてください。', 1, demoUsers[0]!, 48, 3120, 186, ['雑談', 'おすすめ'], 18, true),
   makeDemo('22222222-2222-4222-8222-222222222222', '個人開発で最初の100人に使ってもらうまで', '小さなサービスを公開して3か月。やってよかったことと、完全に遠回りだったことをまとめます。', 2, demoUsers[1]!, 32, 2451, 142, ['個人開発', 'プロダクト'], 52),
   makeDemo('33333333-3333-4333-8333-333333333333', 'あなたの「作業がはかどる音」を教えて', '雨音、カフェの環境音、無音。集中したいとき、どんな音を選んでいますか？', 3, demoUsers[2]!, 67, 1980, 97, ['音楽', '集中'], 87),
   makeDemo('44444444-4444-4444-8444-444444444444', '転職するか迷っています。判断軸を一緒に整理したい', '今の環境に大きな不満はないけれど、新しい挑戦にも惹かれています。経験談を聞かせてください。', 4, demoUsers[0]!, 24, 1204, 64, ['仕事', '相談'], 124),
@@ -84,9 +85,12 @@ export async function getCategories(): Promise<Category[]> {
   if (!pool) return demoCategories;
   const result = await pool.query(`
     SELECT c.id, c.slug, c.name, c.description, c.icon, c.color,
-      COUNT(t.id)::int AS thread_count
+      CASE WHEN c.slug = 'general'
+        THEN (SELECT COUNT(*)::int FROM threads WHERE status IN ('published', 'locked'))
+        ELSE COUNT(t.id)::int
+      END AS thread_count
     FROM categories c
-    LEFT JOIN threads t ON t.category_id = c.id AND t.status = 'published'
+    LEFT JOIN threads t ON t.category_id = c.id AND t.status IN ('published', 'locked')
     GROUP BY c.id
     ORDER BY c.sort_order, c.id
   `);
@@ -103,7 +107,7 @@ export async function getCategories(): Promise<Category[]> {
 
 export async function getHomeData(sort = 'active', categorySlug?: string): Promise<HomeData> {
   if (!pool) {
-    let threads = categorySlug ? demoThreads.filter((thread) => thread.categorySlug === categorySlug) : [...demoThreads];
+    let threads = categorySlug && categorySlug !== 'general' ? demoThreads.filter((thread) => thread.categorySlug === categorySlug) : [...demoThreads];
     if (sort === 'popular') threads.sort((a, b) => b.likeCount - a.likeCount);
     if (sort === 'new') threads.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
     return {
@@ -116,15 +120,15 @@ export async function getHomeData(sort = 'active', categorySlug?: string): Promi
 
   const order = sort === 'popular' ? 't.like_count DESC, t.last_activity_at DESC' : sort === 'new' ? 't.created_at DESC' : 't.is_pinned DESC, t.last_activity_at DESC';
   const params: string[] = [];
-  const categoryWhere = categorySlug ? 'AND c.slug = $1' : '';
-  if (categorySlug) params.push(categorySlug);
+  const categoryWhere = categorySlug && categorySlug !== 'general' ? 'AND c.slug = $1' : '';
+  if (categorySlug && categorySlug !== 'general') params.push(categorySlug);
   const [categories, threads, trending, counts] = await Promise.all([
     getCategories(),
-    pool.query(`${threadSelect} WHERE t.status = 'published' ${categoryWhere} ORDER BY ${order} LIMIT 30`, params),
-    pool.query(`${threadSelect} WHERE t.status = 'published' AND t.created_at > NOW() - INTERVAL '14 days' ORDER BY (t.like_count * 3 + t.reply_count * 2 + t.view_count / 20) DESC LIMIT 5`),
+    pool.query(`${threadSelect} WHERE t.status IN ('published', 'locked') ${categoryWhere} ORDER BY ${order} LIMIT 30`, params),
+    pool.query(`${threadSelect} WHERE t.status IN ('published', 'locked') AND t.created_at > NOW() - INTERVAL '14 days' ORDER BY (t.like_count * 3 + t.reply_count * 2 + t.view_count / 20) DESC LIMIT 5`),
     pool.query(`SELECT
       (SELECT COUNT(*) FROM users WHERE status = 'active')::int AS members,
-      (SELECT COUNT(*) FROM threads WHERE status = 'published')::int AS threads,
+      (SELECT COUNT(*) FROM threads WHERE status IN ('published', 'locked'))::int AS threads,
       (SELECT COUNT(*) FROM posts WHERE status = 'published')::int AS posts`),
   ]);
   return {
@@ -178,13 +182,13 @@ export async function getThread(id: string, viewerId?: string): Promise<ThreadDe
       ];
       return { id: `demo-post-${index}`, body: samples[index % samples.length]!, authorId: author.id, authorName: author.displayName, authorAvatar: null, authorInitial: author.displayName.slice(0, 1), authorRole: author.role, createdAt: new Date(now - (120 - index * 12) * 60_000), isSolution: index === 1, number: index + 1 };
     });
-    return { ...summary, body: summary.excerpt, authorId: originalAuthor.id, likedByViewer: false, bookmarkedByViewer: false, posts: replies };
+    return { ...summary, body: summary.excerpt, authorId: originalAuthor.id, likedByViewer: false, bookmarkedByViewer: false, status: 'published', posts: replies };
   }
 
-  await pool.query('UPDATE threads SET view_count = view_count + 1 WHERE id = $1 AND status = $2', [id, 'published']);
+  await pool.query(`UPDATE threads SET view_count = view_count + 1 WHERE id = $1 AND status IN ('published', 'locked')`, [id]);
   const [threadResult, postsResult] = await Promise.all([
-    pool.query(`${threadSelect.replace('SELECT t.id,', `SELECT t.author_id, t.body, t.id,`)}
-      WHERE t.id = $1 AND t.status = 'published'`, [id]),
+    pool.query(`${threadSelect.replace('SELECT t.id,', `SELECT t.author_id, t.body, t.status, t.id,`)}
+      WHERE t.id = $1 AND t.status IN ('published', 'locked')`, [id]),
     pool.query(`SELECT p.id, p.body, p.author_id, p.created_at, p.is_solution,
         u.display_name AS author_name, u.avatar_url AS author_avatar, u.role AS author_role,
         ROW_NUMBER() OVER (ORDER BY p.created_at, p.id)::int AS number
@@ -206,6 +210,7 @@ export async function getThread(id: string, viewerId?: string): Promise<ThreadDe
     authorId: String(row.author_id),
     likedByViewer: Boolean(liked.rowCount),
     bookmarkedByViewer: Boolean(bookmarked.rowCount),
+    status: String(row.status) as 'published' | 'locked',
     posts: postsResult.rows.map((post) => {
       const name = String(post.author_name);
       return { id: String(post.id), body: String(post.body), authorId: String(post.author_id), authorName: name, authorAvatar: post.author_avatar ? String(post.author_avatar) : null, authorInitial: name.slice(0, 1).toUpperCase(), authorRole: post.author_role, createdAt: new Date(post.created_at), isSolution: Boolean(post.is_solution), number: Number(post.number) } as Post;
@@ -223,14 +228,33 @@ export async function createThread(input: { authorId: string; categoryId: number
   return String(result.rows[0].id);
 }
 
-export async function createPost(input: { threadId: string; authorId: string; body: string }): Promise<void> {
+export async function createPost(input: { threadId: string; authorId: string; body: string }): Promise<Post> {
   if (!pool) throw new Error('Database is not connected');
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
-    await client.query('INSERT INTO posts (thread_id, author_id, body) VALUES ($1, $2, $3)', [input.threadId, input.authorId, input.body]);
-    await client.query(`UPDATE threads SET reply_count = reply_count + 1, last_activity_at = NOW() WHERE id = $1 AND status = 'published'`, [input.threadId]);
+    const inserted = await client.query(`INSERT INTO posts (thread_id, author_id, body)
+      SELECT $1, $2, $3 FROM threads WHERE id = $1 AND status = 'published'
+      RETURNING id, body, author_id, created_at`, [input.threadId, input.authorId, input.body]);
+    if (!inserted.rowCount) throw new Error('Thread is unavailable or locked');
+    await client.query(`UPDATE threads SET reply_count = reply_count + 1, last_activity_at = NOW() WHERE id = $1`, [input.threadId]);
+    const author = await client.query('SELECT display_name, avatar_url, role FROM users WHERE id = $1', [input.authorId]);
     await client.query('COMMIT');
+    const row = inserted.rows[0];
+    const authorRow = author.rows[0];
+    const name = String(authorRow.display_name);
+    return {
+      id: String(row.id),
+      body: String(row.body),
+      authorId: String(row.author_id),
+      authorName: name,
+      authorAvatar: authorRow.avatar_url ? String(authorRow.avatar_url) : null,
+      authorInitial: name.slice(0, 1).toUpperCase(),
+      authorRole: authorRow.role,
+      createdAt: new Date(row.created_at),
+      isSolution: false,
+      number: 0,
+    };
   } catch (error) {
     await client.query('ROLLBACK');
     throw error;
@@ -275,6 +299,204 @@ export async function getProfileData(userId: string): Promise<{ authored: Thread
   return { authored: authored.rows.map(mapThread), bookmarked: bookmarked.rows.map(mapThread) };
 }
 
+export async function getCategoryId(slug: string): Promise<number | null> {
+  if (!pool) return demoCategories.find((category) => category.slug === slug)?.id ?? null;
+  const result = await pool.query('SELECT id FROM categories WHERE slug = $1', [slug]);
+  return result.rowCount ? Number(result.rows[0].id) : null;
+}
+
+export async function getMembers(viewerId: string, query = ''): Promise<MemberSummary[]> {
+  if (!pool) return demoUsers.filter((user) => user.id !== viewerId).map((user) => ({
+    id: user.id,
+    displayName: user.displayName,
+    avatarUrl: user.avatarUrl,
+    bio: user.bio ?? null,
+    role: user.role,
+    createdAt: user.createdAt ?? new Date(),
+  }));
+  const cleaned = query.trim().slice(0, 80);
+  const result = await pool.query(`SELECT id, display_name, avatar_url, bio, role, created_at
+    FROM users
+    WHERE status = 'active' AND id <> $1
+      AND ($2 = '' OR display_name ILIKE '%' || $2 || '%')
+    ORDER BY last_login_at DESC NULLS LAST, created_at DESC
+    LIMIT 100`, [viewerId, cleaned]);
+  return result.rows.map((row) => ({
+    id: String(row.id),
+    displayName: String(row.display_name),
+    avatarUrl: row.avatar_url ? String(row.avatar_url) : null,
+    bio: row.bio ? String(row.bio) : null,
+    role: row.role,
+    createdAt: new Date(row.created_at),
+  }));
+}
+
+export async function getUnreadMessageCount(userId: string): Promise<number> {
+  if (!pool) return 0;
+  const result = await pool.query('SELECT COUNT(*)::int AS count FROM direct_messages WHERE recipient_id = $1 AND read_at IS NULL', [userId]);
+  return Number(result.rows[0].count);
+}
+
+export async function getInbox(userId: string): Promise<ConversationSummary[]> {
+  if (!pool) return [];
+  const result = await pool.query(`WITH mine AS (
+      SELECT dm.*, CASE WHEN dm.sender_id = $1 THEN dm.recipient_id ELSE dm.sender_id END AS peer_id
+      FROM direct_messages dm
+      WHERE dm.sender_id = $1 OR dm.recipient_id = $1
+    ), latest AS (
+      SELECT DISTINCT ON (peer_id) peer_id, body, created_at
+      FROM mine ORDER BY peer_id, created_at DESC, id DESC
+    )
+    SELECT l.body, l.created_at, u.id, u.display_name, u.avatar_url, u.bio, u.role, u.created_at AS user_created_at,
+      (SELECT COUNT(*)::int FROM direct_messages unread
+       WHERE unread.sender_id = l.peer_id AND unread.recipient_id = $1 AND unread.read_at IS NULL) AS unread_count
+    FROM latest l JOIN users u ON u.id = l.peer_id
+    WHERE u.status = 'active'
+    ORDER BY l.created_at DESC`, [userId]);
+  return result.rows.map((row) => ({
+    member: {
+      id: String(row.id),
+      displayName: String(row.display_name),
+      avatarUrl: row.avatar_url ? String(row.avatar_url) : null,
+      bio: row.bio ? String(row.bio) : null,
+      role: row.role,
+      createdAt: new Date(row.user_created_at),
+    },
+    lastMessage: String(row.body),
+    lastMessageAt: new Date(row.created_at),
+    unreadCount: Number(row.unread_count),
+  }));
+}
+
+export async function getConversation(userId: string, peerId: string): Promise<{ member: MemberSummary; messages: DirectMessage[] } | null> {
+  if (!pool) return null;
+  const memberResult = await pool.query(`SELECT id, display_name, avatar_url, bio, role, created_at
+    FROM users WHERE id = $1 AND status = 'active'`, [peerId]);
+  if (!memberResult.rowCount || peerId === userId) return null;
+  await pool.query(`UPDATE direct_messages SET read_at = NOW()
+    WHERE sender_id = $1 AND recipient_id = $2 AND read_at IS NULL`, [peerId, userId]);
+  const result = await pool.query(`SELECT id, sender_id, recipient_id, body, read_at, created_at FROM (
+      SELECT id, sender_id, recipient_id, body, read_at, created_at
+      FROM direct_messages
+      WHERE (sender_id = $1 AND recipient_id = $2) OR (sender_id = $2 AND recipient_id = $1)
+      ORDER BY created_at DESC, id DESC LIMIT 300
+    ) recent ORDER BY created_at, id`, [userId, peerId]);
+  const row = memberResult.rows[0];
+  return {
+    member: {
+      id: String(row.id),
+      displayName: String(row.display_name),
+      avatarUrl: row.avatar_url ? String(row.avatar_url) : null,
+      bio: row.bio ? String(row.bio) : null,
+      role: row.role,
+      createdAt: new Date(row.created_at),
+    },
+    messages: result.rows.map((message) => ({
+      id: String(message.id),
+      senderId: String(message.sender_id),
+      recipientId: String(message.recipient_id),
+      body: String(message.body),
+      readAt: message.read_at ? new Date(message.read_at) : null,
+      createdAt: new Date(message.created_at),
+    })),
+  };
+}
+
+export async function createDirectMessage(senderId: string, recipientId: string, body: string): Promise<DirectMessage> {
+  if (!pool) throw new Error('Database is not connected');
+  const result = await pool.query(`INSERT INTO direct_messages (sender_id, recipient_id, body)
+    SELECT $1, $2, $3 FROM users WHERE id = $2 AND status = 'active' AND $1 <> $2
+    RETURNING id, sender_id, recipient_id, body, read_at, created_at`, [senderId, recipientId, body]);
+  if (!result.rowCount) throw new Error('Recipient is unavailable');
+  const row = result.rows[0];
+  return {
+    id: String(row.id),
+    senderId: String(row.sender_id),
+    recipientId: String(row.recipient_id),
+    body: String(row.body),
+    readAt: null,
+    createdAt: new Date(row.created_at),
+  };
+}
+
+export async function createReport(reporterId: string, threadId: string, reason: string, detail: string): Promise<void> {
+  if (!pool) throw new Error('Database is not connected');
+  await pool.query(`INSERT INTO reports (reporter_id, thread_id, reason, detail)
+    SELECT $1, id, $3, NULLIF($4, '') FROM threads WHERE id = $2 AND status IN ('published', 'locked')`, [reporterId, threadId, reason, detail]);
+}
+
+export async function getAdminDashboard(): Promise<AdminDashboard> {
+  if (!pool) throw new Error('Database is not connected');
+  const [stats, users, threads, reports] = await Promise.all([
+    pool.query(`SELECT
+      (SELECT COUNT(*) FROM users WHERE status = 'active')::int AS users,
+      (SELECT COUNT(*) FROM threads WHERE status <> 'deleted')::int AS threads,
+      (SELECT COUNT(*) FROM posts WHERE status = 'published')::int AS posts,
+      (SELECT COUNT(*) FROM reports WHERE status IN ('open', 'reviewing'))::int AS open_reports`),
+    pool.query(`SELECT u.id, u.email, u.display_name, u.avatar_url, u.bio, u.role, u.status, u.created_at,
+      COUNT(t.id)::int AS thread_count
+      FROM users u LEFT JOIN threads t ON t.author_id = u.id AND t.status <> 'deleted'
+      GROUP BY u.id ORDER BY u.created_at DESC LIMIT 100`),
+    pool.query(`${threadSelect.replace('SELECT t.id,', 'SELECT t.status, t.id,')}
+      WHERE t.status <> 'deleted' ORDER BY t.created_at DESC LIMIT 100`),
+    pool.query(`SELECT r.id, r.reason, r.detail, r.status, r.created_at, r.thread_id,
+      reporter.display_name AS reporter_name, t.title AS thread_title
+      FROM reports r JOIN users reporter ON reporter.id = r.reporter_id
+      LEFT JOIN threads t ON t.id = r.thread_id
+      ORDER BY CASE WHEN r.status IN ('open', 'reviewing') THEN 0 ELSE 1 END, r.created_at DESC LIMIT 100`),
+  ]);
+  return {
+    stats: {
+      users: Number(stats.rows[0].users),
+      threads: Number(stats.rows[0].threads),
+      posts: Number(stats.rows[0].posts),
+      openReports: Number(stats.rows[0].open_reports),
+    },
+    users: users.rows.map((row) => ({
+      id: String(row.id),
+      email: String(row.email),
+      displayName: String(row.display_name),
+      avatarUrl: row.avatar_url ? String(row.avatar_url) : null,
+      bio: row.bio ? String(row.bio) : null,
+      role: row.role,
+      status: row.status,
+      createdAt: new Date(row.created_at),
+      threadCount: Number(row.thread_count),
+    })),
+    threads: threads.rows.map((row) => ({ ...mapThread(row), status: String(row.status) })),
+    reports: reports.rows.map((row) => ({
+      id: String(row.id),
+      reason: String(row.reason),
+      detail: row.detail ? String(row.detail) : null,
+      status: String(row.status),
+      createdAt: new Date(row.created_at),
+      reporterName: String(row.reporter_name),
+      threadId: row.thread_id ? String(row.thread_id) : null,
+      threadTitle: row.thread_title ? String(row.thread_title) : null,
+    })),
+  };
+}
+
+export async function updateThreadStatus(threadId: string, status: 'published' | 'hidden' | 'locked' | 'deleted'): Promise<void> {
+  if (!pool) throw new Error('Database is not connected');
+  await pool.query('UPDATE threads SET status = $2, updated_at = NOW() WHERE id = $1', [threadId, status]);
+}
+
+export async function updateUserRole(userId: string, role: 'member' | 'moderator' | 'admin'): Promise<void> {
+  if (!pool) throw new Error('Database is not connected');
+  await pool.query('UPDATE users SET role = $2, updated_at = NOW() WHERE id = $1', [userId, role]);
+}
+
+export async function updateUserStatus(userId: string, status: 'active' | 'suspended'): Promise<void> {
+  if (!pool) throw new Error('Database is not connected');
+  await pool.query('UPDATE users SET status = $2, updated_at = NOW() WHERE id = $1', [userId, status]);
+}
+
+export async function updateReportStatus(reportId: string, status: 'reviewing' | 'resolved' | 'dismissed'): Promise<void> {
+  if (!pool) throw new Error('Database is not connected');
+  await pool.query('UPDATE reports SET status = $2 WHERE id = $1', [reportId, status]);
+}
+
 export async function findUserById(id: string): Promise<User | null> {
   if (!pool) return demoUsers.find((user) => user.id === id) ?? null;
   const result = await pool.query('SELECT id, email, display_name, avatar_url, bio, role, created_at FROM users WHERE id = $1 AND status = $2', [id, 'active']);
@@ -283,22 +505,23 @@ export async function findUserById(id: string): Promise<User | null> {
   return { id: String(row.id), email: String(row.email), displayName: String(row.display_name), avatarUrl: row.avatar_url, bio: row.bio, role: row.role, createdAt: new Date(row.created_at) };
 }
 
-export async function upsertGoogleUser(profile: Profile): Promise<User> {
+export async function upsertGoogleUser(profile: Profile, adminEmails: string[] = []): Promise<User> {
   if (!pool) throw new Error('Database is not connected');
   const email = profile.emails?.[0]?.value?.toLowerCase();
   if (!email) throw new Error('Google account did not provide an email address');
   const avatar = profile.photos?.[0]?.value ?? null;
   const result = await pool.query(`
-    INSERT INTO users (google_sub, email, display_name, avatar_url, last_login_at)
-    VALUES ($1, $2, $3, $4, NOW())
+    INSERT INTO users (google_sub, email, display_name, avatar_url, last_login_at, role)
+    VALUES ($1, $2, $3, $4, NOW(), CASE WHEN $2 = ANY($5::text[]) THEN 'admin' ELSE 'member' END)
     ON CONFLICT (google_sub) DO UPDATE SET
       email = EXCLUDED.email,
       display_name = EXCLUDED.display_name,
       avatar_url = EXCLUDED.avatar_url,
+      role = CASE WHEN EXCLUDED.email = ANY($5::text[]) THEN 'admin' ELSE users.role END,
       last_login_at = NOW(),
       updated_at = NOW()
     RETURNING id, email, display_name, avatar_url, bio, role, created_at
-  `, [profile.id, email, profile.displayName || email.split('@')[0], avatar]);
+  `, [profile.id, email, profile.displayName || email.split('@')[0], avatar, adminEmails]);
   const row = result.rows[0];
   return { id: String(row.id), email: String(row.email), displayName: String(row.display_name), avatarUrl: row.avatar_url, bio: row.bio, role: row.role, createdAt: new Date(row.created_at) };
 }

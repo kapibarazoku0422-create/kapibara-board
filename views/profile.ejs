@@ -2,12 +2,12 @@
 <main id="main" class="inner-main profile-page">
   <section class="shell profile-hero">
     <%- include('partials/avatar', { avatar: currentUser.avatarUrl, initial: currentUser.displayName.slice(0, 1), size: 'xlarge' }) %>
-    <div><p>MY YOHaku</p><h1><%= currentUser.displayName %></h1><span><%= currentUser.email %></span></div>
+    <div><p>MY PAGE</p><h1><%= currentUser.displayName %></h1><span><%= currentUser.email %></span></div>
     <form method="post" action="/logout"><input type="hidden" name="_csrf" value="<%= csrfToken %>"><button class="plain-action" type="submit">ログアウト</button></form>
   </section>
   <section class="shell profile-grid">
-    <div><div class="result-heading"><h2>投稿した話題</h2><span><%= authored.length %>件</span></div><div class="thread-list"><% authored.forEach(function(thread) { %><%- include('partials/thread-card', { thread: thread }) %><% }) %><% if (!authored.length) { %><div class="empty-state empty-state--compact"><span>✎</span><h2>まだ投稿がありません</h2><a href="/new">最初の話題を投稿 →</a></div><% } %></div></div>
-    <div><div class="result-heading"><h2>あとで読む</h2><span><%= bookmarked.length %>件</span></div><div class="thread-list"><% bookmarked.forEach(function(thread) { %><%- include('partials/thread-card', { thread: thread }) %><% }) %><% if (!bookmarked.length) { %><div class="empty-state empty-state--compact"><span>◇</span><h2>保存した話題はありません</h2><a href="/">話題を見つける →</a></div><% } %></div></div>
+    <div><div class="result-heading"><h2>投稿した話題</h2><span><%= authored.length %>件</span></div><div class="thread-list"><% authored.forEach(function(thread) { %><%- include('partials/thread-card', { thread: thread }) %><% }) %><% if (!authored.length) { %><div class="empty-state empty-state--compact"><span>✎</span><h2>まだ投稿はありません</h2><a href="/new">最初の話題をつくってみる →</a></div><% } %></div></div>
+    <div><div class="result-heading"><h2>あとで読む</h2><span><%= bookmarked.length %>件</span></div><div class="thread-list"><% bookmarked.forEach(function(thread) { %><%- include('partials/thread-card', { thread: thread }) %><% }) %><% if (!bookmarked.length) { %><div class="empty-state empty-state--compact"><span>◇</span><h2>気になる話題を保存してみよう</h2><a href="/">話題を見つけにいく →</a></div><% } %></div></div>
   </section>
 </main>
 <%- include('partials/footer') %>

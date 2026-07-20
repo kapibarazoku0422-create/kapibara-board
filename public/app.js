@@ -1,13 +1,13 @@
 (() => {
   const root = document.documentElement;
-  const storedTheme = localStorage.getItem('yohaku-theme');
+  const storedTheme = localStorage.getItem('kapibara-theme');
   const preferredDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
   root.dataset.theme = storedTheme || (preferredDark ? 'dark' : 'light');
 
   document.querySelector('.theme-toggle')?.addEventListener('click', () => {
     const next = root.dataset.theme === 'dark' ? 'light' : 'dark';
     root.dataset.theme = next;
-    localStorage.setItem('yohaku-theme', next);
+    localStorage.setItem('kapibara-theme', next);
   });
 
   document.querySelector('.flash button')?.addEventListener('click', (event) => {
@@ -69,4 +69,106 @@
       search?.focus();
     }
   });
+
+  document.querySelectorAll('textarea').forEach((textarea) => {
+    textarea.addEventListener('keydown', (event) => {
+      if ((event.metaKey || event.ctrlKey) && event.key === 'Enter') {
+        event.preventDefault();
+        textarea.closest('form')?.requestSubmit();
+      }
+    });
+  });
+
+  const liveThread = document.querySelector('[data-live-thread]');
+  if (liveThread && window.EventSource) {
+    const replies = document.querySelector('#live-replies');
+    const source = new EventSource(`/threads/${liveThread.dataset.liveThread}/events`);
+    source.addEventListener('update', (event) => {
+      const payload = JSON.parse(event.data);
+      if (payload.type !== 'post' || !replies || replies.querySelector(`[data-post-id="${CSS.escape(payload.post.id)}"]`)) return;
+      const post = payload.post;
+      const article = document.createElement('article');
+      article.className = 'reply-card';
+      article.dataset.postId = post.id;
+      article.id = 'latest';
+
+      const rail = document.createElement('div');
+      rail.className = 'reply-rail';
+      const avatar = document.createElement('span');
+      avatar.className = 'avatar avatar--medium';
+      if (post.authorAvatar) {
+        const image = document.createElement('img');
+        image.src = post.authorAvatar;
+        image.alt = '';
+        avatar.append(image);
+      } else {
+        const initial = document.createElement('span');
+        initial.textContent = post.authorInitial;
+        avatar.append(initial);
+      }
+      rail.append(avatar, document.createElement('span'));
+
+      const content = document.createElement('div');
+      content.className = 'reply-content';
+      const header = document.createElement('header');
+      const author = document.createElement('div');
+      const name = document.createElement('b');
+      name.textContent = post.authorName;
+      author.append(name);
+      if (post.authorRole !== 'member') {
+        const role = document.createElement('span');
+        role.className = 'role-badge';
+        role.textContent = post.authorRole === 'admin' ? '管理者' : 'モデレーター';
+        author.append(role);
+      }
+      const meta = document.createElement('div');
+      const time = document.createElement('time');
+      time.dateTime = post.createdAt;
+      time.textContent = 'たった今';
+      meta.append(time);
+      header.append(author, meta);
+      const body = document.createElement('div');
+      body.className = 'rich-body rich-body--reply';
+      body.textContent = post.body;
+      const footer = document.createElement('footer');
+      const thanks = document.createElement('button');
+      thanks.type = 'button';
+      thanks.className = 'mini-action';
+      thanks.textContent = '♡ いいね';
+      footer.append(thanks);
+      content.append(header, body, footer);
+      replies.querySelector('#latest')?.removeAttribute('id');
+      article.append(rail, content);
+      replies.append(article);
+      const count = document.querySelector('[data-reply-count]');
+      if (count) count.textContent = new Intl.NumberFormat('ja-JP').format(replies.querySelectorAll('[data-post-id]').length);
+    });
+  }
+
+  const liveDm = document.querySelector('[data-live-dm]');
+  if (liveDm && window.EventSource) {
+    const messages = document.querySelector('#live-messages');
+    const currentUser = messages?.dataset.currentUser;
+    const source = new EventSource(`/messages/${liveDm.dataset.liveDm}/events`);
+    source.addEventListener('update', (event) => {
+      const payload = JSON.parse(event.data);
+      if (payload.type !== 'message' || !messages || messages.querySelector(`[data-message-id="${CSS.escape(payload.message.id)}"]`)) return;
+      const message = payload.message;
+      messages.querySelector('.conversation-start')?.remove();
+      messages.querySelector('#latest')?.removeAttribute('id');
+      const article = document.createElement('article');
+      article.className = `message-bubble${message.senderId === currentUser ? ' is-mine' : ''}`;
+      article.dataset.messageId = message.id;
+      article.id = 'latest';
+      const body = document.createElement('p');
+      body.textContent = message.body;
+      const time = document.createElement('time');
+      time.dateTime = message.createdAt;
+      time.textContent = 'たった今';
+      article.append(body, time);
+      messages.append(article);
+      messages.scrollTop = messages.scrollHeight;
+    });
+    messages.scrollTop = messages.scrollHeight;
+  }
 })();

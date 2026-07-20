@@ -3,7 +3,7 @@ import { config } from './config.js';
 import { closeDatabase } from './db.js';
 
 const server = app.listen(config.port, '0.0.0.0', () => {
-  console.log(`Yohaku Board listening on 0.0.0.0:${config.port} (${config.nodeEnv})`);
+  console.log(`Kapibara Board listening on 0.0.0.0:${config.port} (${config.nodeEnv})`);
 });
 
 server.keepAliveTimeout = 120_000;

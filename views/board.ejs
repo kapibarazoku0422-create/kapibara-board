@@ -4,13 +4,13 @@
     <div class="shell board-hero-inner">
       <div class="board-glyph"><%= category.icon %></div>
       <div><p>BOARD / <%= category.slug.toUpperCase() %></p><h1><%= category.name %></h1><span><%= category.description %></span></div>
-      <div class="board-total"><strong><%= formatNumber(category.threadCount) %></strong><span>TOPICS</span></div>
+      <div class="board-total"><strong><%= formatNumber(category.threadCount) %></strong><span>話題</span></div>
     </div>
   </section>
   <section class="shell narrow-content">
-    <div class="feed-header"><div><p>CONVERSATIONS</p><h2>このボードの話題</h2></div><div class="feed-controls"><%- include('partials/sort-tabs', { basePath: '/boards/' + category.slug }) %><a class="round-create" href="/new" aria-label="新規投稿">＋</a></div></div>
+    <div class="feed-header"><div><p>CONVERSATIONS</p><h2>みんなの話題</h2></div><div class="feed-controls"><%- include('partials/sort-tabs', { basePath: '/boards/' + category.slug }) %><a class="round-create" href="/new" aria-label="話題をつくる">＋</a></div></div>
     <div class="thread-list">
-      <% if (!threads.length) { %><div class="empty-state"><span>◌</span><h2>まだ話題がありません</h2><p>この場所で最初の会話をはじめてみませんか。</p><a class="button button--primary" href="/new">投稿する</a></div><% } %>
+      <% if (!threads.length) { %><div class="empty-state"><span>◌</span><h2>ここはまだ静かみたい</h2><p>一番乗りで、好きな話をはじめてみよう。</p><a class="button button--primary" href="/new">話題をつくる</a></div><% } %>
       <% threads.forEach(function(thread) { %><%- include('partials/thread-card', { thread: thread }) %><% }) %>
     </div>
   </section>

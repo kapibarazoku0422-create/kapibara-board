@@ -1,0 +1,19 @@
+<%- include('partials/head') %>
+<main id="main" class="inner-main social-page">
+  <section class="shell social-hero">
+    <div><p>MEET THE COMMUNITY</p><h1>話してみたい人を<br>見つけよう。</h1><span>気になる人に、そのままDMを送れます。</span></div>
+    <form action="/members" method="get"><input type="search" name="q" value="<%= query %>" placeholder="名前で探す"><button type="submit">探す</button></form>
+  </section>
+  <section class="shell member-grid">
+    <% members.forEach(function(member) { %>
+      <article class="member-card">
+        <%- include('partials/avatar', { avatar: member.avatarUrl, initial: member.displayName.slice(0, 1), size: 'xlarge' }) %>
+        <div><h2><%= member.displayName %></h2><span><%= member.role === 'admin' ? '管理者' : member.role === 'moderator' ? 'モデレーター' : 'メンバー' %></span></div>
+        <p><%= member.bio || 'Kapibara Boardの仲間です。' %></p>
+        <a class="button button--primary" href="/messages/<%= member.id %>">DMを送る <span>→</span></a>
+      </article>
+    <% }) %>
+    <% if (!members.length) { %><div class="empty-state member-empty"><span>◌</span><h2>まだ見つからなかったみたい</h2><p>別の名前でも探してみてね。</p></div><% } %>
+  </section>
+</main>
+<%- include('partials/footer') %>

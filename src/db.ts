@@ -10,7 +10,7 @@ export const pool = config.databaseUrl
       idleTimeoutMillis: 30_000,
       connectionTimeoutMillis: 5_000,
       ssl: config.databaseSsl ? { rejectUnauthorized: false } : undefined,
-      application_name: 'yohaku-board',
+      application_name: 'kapibara-board',
     })
   : null;
 

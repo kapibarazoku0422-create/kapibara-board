@@ -1,0 +1,24 @@
+<%- include('partials/head') %>
+<main id="main" class="inner-main conversation-page" data-live-dm="<%= member.id %>">
+  <section class="conversation-shell">
+    <header class="conversation-header">
+      <a href="/messages" aria-label="DM一覧へ戻る">←</a>
+      <%- include('partials/avatar', { avatar: member.avatarUrl, initial: member.displayName.slice(0, 1), size: 'medium' }) %>
+      <div><h1><%= member.displayName %></h1><span><i></i> リアルタイムで会話中</span></div>
+    </header>
+    <div class="message-list" id="live-messages" data-current-user="<%= currentUser.id %>">
+      <% messages.forEach(function(message, index) { %>
+        <article class="message-bubble<%= message.senderId === currentUser.id ? ' is-mine' : '' %>" data-message-id="<%= message.id %>" id="<%= index === messages.length - 1 ? 'latest' : '' %>">
+          <p><%= message.body %></p><time datetime="<%= message.createdAt.toISOString() %>"><%= formatDate(message.createdAt) %></time>
+        </article>
+      <% }) %>
+      <% if (!messages.length) { %><div class="conversation-start"><span>👋</span><h2>最初のひとことを送ってみよう</h2><p>短いあいさつだけでも大丈夫。</p></div><% } %>
+    </div>
+    <form class="message-composer" method="post" action="/messages/<%= member.id %>">
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+      <textarea name="body" rows="1" placeholder="メッセージを書く…" required autofocus></textarea>
+      <button type="submit" aria-label="送信">送る <span>↗</span></button>
+    </form>
+  </section>
+</main>
+<%- include('partials/footer') %>

@@ -1,8 +1,8 @@
 <%- include('partials/head') %>
 <main id="main" class="inner-main form-page">
   <div class="shell form-shell">
-    <nav class="breadcrumbs" aria-label="パンくず"><a href="/">ホーム</a><span>/</span><b>新しいスレッド</b></nav>
-    <div class="form-intro"><p>START A CONVERSATION</p><h1>新しい話題を<br>はじめよう。</h1><span>うまくまとめなくて大丈夫。<br>あなたの言葉で聞かせてください。</span></div>
+    <nav class="breadcrumbs" aria-label="パンくず"><a href="/">ホーム</a><span>/</span><b>話題をつくる</b></nav>
+    <div class="form-intro"><p>START A CONVERSATION</p><h1>今日は何を<br>話そうか？</h1><span>きれいにまとめなくても大丈夫。<br>いつもの言葉で書いてみよう。</span></div>
     <form class="topic-form" method="post" action="/threads">
       <input type="hidden" name="_csrf" value="<%= csrfToken %>">
       <div class="field-group">
@@ -15,20 +15,20 @@
         <% if (errors.categoryId) { %><p class="field-error"><%= errors.categoryId[0] %></p><% } %>
       </div>
       <div class="field-group">
-        <label for="title"><span>02</span><b>タイトル</b><small>ひと目で内容が伝わるタイトルがおすすめです</small></label>
-        <input class="large-input" id="title" type="text" name="title" value="<%= values.title || '' %>" minlength="5" maxlength="120" placeholder="例：最近、心に残った言葉を教えてください" required>
+        <label for="title"><span>02</span><b>タイトル</b><small>どんな話なのか、ひとことで教えてね</small></label>
+        <input class="large-input" id="title" type="text" name="title" value="<%= values.title || '' %>" placeholder="例：最近、心に残った言葉を教えてください" required>
         <% if (errors.title) { %><p class="field-error"><%= errors.title[0] %></p><% } %>
       </div>
       <div class="field-group">
-        <label for="body"><span>03</span><b>本文</b><small>背景や聞きたいことを具体的に書いてみましょう</small></label>
-        <div class="editor-shell"><div class="editor-toolbar"><span>B</span><span><i>I</i></span><span>“</span><span>↗</span></div><textarea id="body" name="body" minlength="20" maxlength="20000" rows="12" placeholder="ここに内容を書いてください…" required><%= values.body || '' %></textarea><div class="editor-count"><b data-character-count>0</b> / 20,000</div></div>
+        <label for="body"><span>03</span><b>本文</b><small>思ったことや聞きたいことを、自由にどうぞ</small></label>
+        <div class="editor-shell"><div class="editor-toolbar"><span>B</span><span><i>I</i></span><span>“</span><span>↗</span></div><textarea id="body" name="body" rows="12" placeholder="ここから自由に書いてみよう…" required><%= values.body || '' %></textarea></div>
         <% if (errors.body) { %><p class="field-error"><%= errors.body[0] %></p><% } %>
       </div>
       <div class="field-group">
         <label for="tags"><span>04</span><b>タグ</b><small>カンマ区切りで5個まで</small></label>
-        <input id="tags" type="text" name="tags" value="<%= values.tags || '' %>" maxlength="120" placeholder="暮らし, 質問, おすすめ">
+        <input id="tags" type="text" name="tags" value="<%= values.tags || '' %>" placeholder="暮らし, 質問, おすすめ">
       </div>
-      <div class="form-submit"><p>投稿前に、個人情報や誰かを傷つける表現が含まれていないか確認しましょう。</p><div><a href="/">キャンセル</a><button class="button button--primary" type="submit">この内容で公開する <span>↗</span></button></div></div>
+      <div class="form-submit"><p>送る前に、個人情報や誰かが悲しくなる言葉がないかだけ確認してね。</p><div><a href="/">やめて戻る</a><button class="button button--primary" type="submit">みんなに公開する <span>↗</span></button></div></div>
     </form>
   </div>
 </main>

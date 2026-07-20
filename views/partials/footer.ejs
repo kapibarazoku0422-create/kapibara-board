@@ -1,12 +1,13 @@
   <footer class="site-footer">
     <div class="shell footer-inner">
-      <div><span class="footer-mark">余</span><p>言葉と人のあいだに、<br>心地よい余白を。</p></div>
+      <div><span class="footer-mark">か</span><p>好きな話を、好きなだけ。<br>のんびり集まる掲示板。</p></div>
       <nav aria-label="フッターナビゲーション">
         <a href="/">ホーム</a>
         <a href="/search">検索</a>
+        <% if (currentUser) { %><a href="/members">メンバー</a><a href="/messages">DM</a><% } %>
         <a href="/boards/questions">使い方・質問</a>
       </nav>
-      <small>© <%= new Date().getFullYear() %> YOHaku Community</small>
+      <small>© <%= new Date().getFullYear() %> Kapibara Board</small>
     </div>
   </footer>
 </body>

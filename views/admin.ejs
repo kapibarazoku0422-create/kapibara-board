@@ -1,0 +1,36 @@
+<%- include('partials/head') %>
+<main id="main" class="inner-main admin-page">
+  <section class="shell admin-hero">
+    <div><p>KAPIBARA CONTROL ROOM</p><h1>管理者パネル</h1><span>コミュニティの様子を見守る場所です。</span></div>
+    <span class="admin-badge">ADMIN</span>
+  </section>
+  <section class="shell admin-stats">
+    <article><span>メンバー</span><strong><%= formatNumber(stats.users) %></strong></article>
+    <article><span>話題</span><strong><%= formatNumber(stats.threads) %></strong></article>
+    <article><span>コメント</span><strong><%= formatNumber(stats.posts) %></strong></article>
+    <article class="<%= stats.openReports ? 'needs-attention' : '' %>"><span>未対応の通報</span><strong><%= formatNumber(stats.openReports) %></strong></article>
+  </section>
+
+  <section class="shell admin-section" id="reports">
+    <div class="admin-section-heading"><div><p>REPORTS</p><h2>通報</h2></div><span><%= reports.length %>件</span></div>
+    <div class="admin-table-wrap"><table><thead><tr><th>内容</th><th>理由</th><th>報告者</th><th>状態</th><th>操作</th></tr></thead><tbody>
+      <% reports.forEach(function(report) { %><tr><td><% if (report.threadId) { %><a href="/threads/<%= report.threadId %>"><%= report.threadTitle || '削除済みの話題' %></a><% } %><% if (report.detail) { %><small><%= report.detail %></small><% } %></td><td><%= report.reason %></td><td><%= report.reporterName %></td><td><span class="status-chip status-chip--<%= report.status %>"><%= report.status %></span></td><td><form method="post" action="/admin/reports/<%= report.id %>/status"><input type="hidden" name="_csrf" value="<%= csrfToken %>"><select name="status"><option value="reviewing">確認中</option><option value="resolved">対応済み</option><option value="dismissed">問題なし</option></select><button type="submit">更新</button></form></td></tr><% }) %>
+      <% if (!reports.length) { %><tr><td colspan="5">通報はありません。</td></tr><% } %>
+    </tbody></table></div>
+  </section>
+
+  <section class="shell admin-section" id="threads">
+    <div class="admin-section-heading"><div><p>TOPICS</p><h2>話題の管理</h2></div><span><%= threads.length %>件表示</span></div>
+    <div class="admin-table-wrap"><table><thead><tr><th>話題</th><th>投稿者</th><th>状態</th><th>コメント</th><th>操作</th></tr></thead><tbody>
+      <% threads.forEach(function(thread) { %><tr><td><a href="/threads/<%= thread.id %>"><%= thread.title %></a><small><%= thread.categoryName %></small></td><td><%= thread.authorName %></td><td><span class="status-chip status-chip--<%= thread.status %>"><%= thread.status %></span></td><td><%= thread.replyCount %></td><td><form method="post" action="/admin/threads/<%= thread.id %>/status"><input type="hidden" name="_csrf" value="<%= csrfToken %>"><select name="status"><option value="published">公開</option><option value="locked">受付終了</option><option value="hidden">非表示</option><option value="deleted">削除</option></select><button type="submit">更新</button></form></td></tr><% }) %>
+    </tbody></table></div>
+  </section>
+
+  <section class="shell admin-section" id="users">
+    <div class="admin-section-heading"><div><p>MEMBERS</p><h2>メンバー管理</h2></div><span><%= users.length %>人表示</span></div>
+    <div class="admin-table-wrap"><table><thead><tr><th>メンバー</th><th>投稿</th><th>権限</th><th>状態</th><th>アカウント操作</th></tr></thead><tbody>
+      <% users.forEach(function(user) { %><tr><td><b><%= user.displayName %></b><small><%= user.email %></small></td><td><%= user.threadCount %></td><td><form method="post" action="/admin/users/<%= user.id %>/role"><input type="hidden" name="_csrf" value="<%= csrfToken %>"><select name="role"><option value="member" <%= user.role === 'member' ? 'selected' : '' %>>メンバー</option><option value="moderator" <%= user.role === 'moderator' ? 'selected' : '' %>>モデレーター</option><option value="admin" <%= user.role === 'admin' ? 'selected' : '' %>>管理者</option></select><button type="submit">変更</button></form></td><td><span class="status-chip status-chip--<%= user.status %>"><%= user.status %></span></td><td><% if (user.id !== currentUser.id) { %><form method="post" action="/admin/users/<%= user.id %>/status"><input type="hidden" name="_csrf" value="<%= csrfToken %>"><input type="hidden" name="status" value="<%= user.status === 'active' ? 'suspended' : 'active' %>"><button type="submit"><%= user.status === 'active' ? '一時停止' : '再開' %></button></form><% } else { %><small>自分のアカウント</small><% } %></td></tr><% }) %>
+    </tbody></table></div>
+  </section>
+</main>
+<%- include('partials/footer') %>

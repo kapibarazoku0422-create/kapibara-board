@@ -1,6 +1,6 @@
 services:
   - type: web
-    name: yohaku-board
+    name: kapibara-board
     runtime: node
     plan: free
     region: singapore
@@ -26,4 +26,6 @@ services:
       - key: GOOGLE_CLIENT_ID
         sync: false
       - key: GOOGLE_CLIENT_SECRET
+        sync: false
+      - key: ADMIN_EMAILS
         sync: false

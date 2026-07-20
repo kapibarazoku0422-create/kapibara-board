@@ -1,6 +1,15 @@
-# YOHaku — Googleログイン対応コミュニティ掲示板
+# Kapibara Board — Googleログイン対応コミュニティ掲示板
 
-言葉と人のあいだに心地よい余白をつくる、大規模運用を意識した掲示板です。Google OAuth、PostgreSQL、DBセッション、全文検索、カテゴリ、返信、共感、ブックマーク、レスポンシブUI、ダークモードを備えています。
+好きな話をのんびり楽しめる、大規模運用を意識した掲示板です。Google OAuth、PostgreSQL、DBセッション、全文検索、カテゴリ、リアルタイム返信、DM、いいね、ブックマーク、通報、管理者パネル、レスポンシブUI、ダークモードを備えています。
+
+## 主な機能
+
+- 「総合」で全カテゴリの話題をまとめて表示
+- ホームから一言だけで投稿できるクイック投稿
+- Server-Sent Eventsによる返信・DMのリアルタイム表示
+- メンバー検索、DM受信箱、未読件数
+- 通報、投稿の公開・受付終了・非表示・削除
+- メンバー権限とアカウント状態を管理できる管理者パネル
 
 ## ローカルで確認
 
@@ -39,9 +48,12 @@ npm run db:migrate
 GOOGLE_CLIENT_ID=...
 GOOGLE_CLIENT_SECRET=...
 APP_BASE_URL=http://localhost:3000
+ADMIN_EMAILS=owner@example.com
 ```
 
 本番の `APP_BASE_URL` は末尾の `/` を付けず、公開URLそのものを設定してください。Google OAuthのリダイレクトURIと完全一致する必要があります。
+
+`ADMIN_EMAILS` には管理者にするGoogleアカウントのメールアドレスをカンマ区切りで設定します。未設定の場合でも、マイグレーション時点で最初のアクティブユーザーが初期管理者になります。
 
 ## Renderへデプロイ
 
@@ -54,6 +66,7 @@ APP_BASE_URL=http://localhost:3000
    - `APP_BASE_URL`: `https://サービス名.onrender.com`
    - `GOOGLE_CLIENT_ID`
    - `GOOGLE_CLIENT_SECRET`
+   - `ADMIN_EMAILS`: 管理者のGoogleメールアドレス
 4. PostgreSQLに `npm run db:migrate` 相当のSQLを適用します。
 5. Applyしてデプロイします。
 

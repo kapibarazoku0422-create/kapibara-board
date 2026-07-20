@@ -23,7 +23,7 @@ if (config.googleAuthEnabled) {
       },
       async (_accessToken, _refreshToken, profile, done) => {
         try {
-          done(null, await upsertGoogleUser(profile));
+          done(null, await upsertGoogleUser(profile, config.adminEmails));
         } catch (error) {
           done(error as Error);
         }

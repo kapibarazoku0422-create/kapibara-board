@@ -4,8 +4,8 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#f7f4ee">
-  <meta name="description" content="話したいことに、ちょうどいい居場所を。Googleアカウントで参加できるコミュニティ掲示板 YOHaku。">
-  <title><%= title %> | YOHaku</title>
+  <meta name="description" content="好きな話を、好きなだけ。Googleアカウントですぐに参加できる掲示板 Kapibara Board。">
+  <title><%= title %> | Kapibara Board</title>
   <link rel="icon" href="/favicon.svg" type="image/svg+xml">
   <link rel="stylesheet" href="/styles.css">
   <script src="/app.js" defer></script>
@@ -16,13 +16,15 @@
   <div class="ambient ambient--two"></div>
   <header class="site-header">
     <div class="shell header-inner">
-      <a class="brand" href="/" aria-label="YOHaku ホーム">
-        <span class="brand-mark" aria-hidden="true"><i></i><i></i><i></i></span>
-        <span class="brand-word">YOH<em>aku</em></span>
+      <a class="brand" href="/" aria-label="Kapibara Board ホーム">
+        <span class="brand-mark" aria-hidden="true">
+          <svg viewBox="0 0 36 36"><circle class="capy-ear" cx="9" cy="9" r="5"/><circle class="capy-ear" cx="27" cy="9" r="5"/><rect class="capy-head" x="4" y="7" width="28" height="25" rx="11"/><circle class="capy-eye" cx="12" cy="17" r="1.5"/><circle class="capy-eye" cx="24" cy="17" r="1.5"/><rect class="capy-muzzle" x="11" y="20" width="14" height="8" rx="4"/><circle class="capy-nose" cx="18" cy="22" r="2"/></svg>
+        </span>
+        <span class="brand-word">Kapibara <em>Board</em></span>
       </a>
       <form class="header-search" action="/search" method="get" role="search">
         <svg aria-hidden="true" viewBox="0 0 24 24"><path d="m21 21-4.35-4.35m2.35-5.65a8 8 0 1 1-16 0 8 8 0 0 1 16 0Z"/></svg>
-        <input type="search" name="q" placeholder="話題を検索" aria-label="スレッドを検索">
+        <input type="search" name="q" placeholder="気になる話を探す" aria-label="話題を検索">
         <kbd>⌘ K</kbd>
       </form>
       <nav class="header-actions" aria-label="メインナビゲーション">
@@ -30,12 +32,15 @@
           <svg class="sun-icon" aria-hidden="true" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M4.93 4.93l1.42 1.42m11.3 11.3 1.42 1.42M2 12h2m16 0h2M4.93 19.07l1.42-1.42m11.3-11.3 1.42-1.42"/></svg>
         </button>
         <% if (currentUser) { %>
-          <a class="new-thread-button" href="/new"><span>＋</span> 投稿する</a>
+          <a class="header-nav-link" href="/members">メンバー</a>
+          <a class="header-nav-link header-dm-link" href="/messages">DM<% if (unreadMessages) { %><b><%= unreadMessages > 99 ? '99+' : unreadMessages %></b><% } %></a>
+          <% if (currentUser.role === 'admin') { %><a class="header-nav-link header-admin-link" href="/admin">管理</a><% } %>
+          <a class="new-thread-button" href="/new"><span>＋</span> 話題をつくる</a>
           <a class="avatar-link" href="/me" aria-label="マイページ">
             <% if (currentUser.avatarUrl) { %><img src="<%= currentUser.avatarUrl %>" alt=""><% } else { %><span><%= currentUser.displayName.slice(0, 1) %></span><% } %>
           </a>
         <% } else { %>
-          <a class="login-button" href="/auth/google"><span class="google-g">G</span> Googleで参加</a>
+          <a class="login-button" href="/auth/google"><span class="google-g">G</span> Googleではじめる</a>
         <% } %>
       </nav>
     </div>
@@ -44,5 +49,5 @@
     <div class="shell flash flash--<%= flash.type %>" role="status"><span><%= flash.message %></span><button type="button" aria-label="閉じる">×</button></div>
   <% } %>
   <% if (demoMode) { %>
-    <div class="preview-bar"><span></span> プレビューモード — PostgreSQLを接続すると投稿機能が有効になります</div>
+    <div class="preview-bar"><span></span> おためし表示中 — データベースをつなぐと投稿できるようになります</div>
   <% } %>

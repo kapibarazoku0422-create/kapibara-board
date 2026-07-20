@@ -2,40 +2,52 @@
 <main id="main">
   <section class="hero shell">
     <div class="hero-copy">
-      <p class="kicker"><span></span> OPEN COMMUNITY / 2026</p>
-      <h1>話したいことに、<br><em>居場所</em>を。</h1>
-      <p class="hero-lead">好きなこと、考えていること、誰かに聞いてみたいこと。<br>ここは、言葉からつながるオープンな掲示板です。</p>
+      <p class="kicker"><span></span> HELLO, KAPIBARA!</p>
+      <h1>好きな話を、<br><em>のんびり</em>しよう。</h1>
+      <p class="hero-lead">ふと思ったこと、最近ハマっていること、みんなに聞いてみたいこと。<br>気軽に書いて、ゆるくつながる掲示板です。</p>
       <div class="hero-actions">
         <% if (currentUser) { %>
-          <a class="button button--primary" href="/new">新しい話題をはじめる <span>↗</span></a>
+          <a class="button button--primary" href="/new">話題をつくってみる <span>↗</span></a>
         <% } else { %>
-          <a class="button button--primary" href="/auth/google">Googleで参加する <span>↗</span></a>
+          <a class="button button--primary" href="/auth/google">Googleではじめる <span>↗</span></a>
         <% } %>
-        <a class="text-link" href="#latest">まずは読んでみる <span>↓</span></a>
+        <a class="text-link" href="#latest">ちょっとのぞいてみる <span>↓</span></a>
       </div>
       <div class="community-proof">
         <div class="avatar-stack"><span>あ</span><span>R</span><span>む</span><span>+</span></div>
-        <p><strong><%= formatNumber(stats.members) %>人</strong>が参加中<br><small>いま <i></i> <%= formatNumber(stats.online) %>人がオンライン</small></p>
+        <p><strong><%= formatNumber(stats.members) %>人</strong>の仲間がいます<br><small>いま <i></i> <%= formatNumber(stats.online) %>人がのんびり参加中</small></p>
       </div>
     </div>
     <div class="hero-art" aria-hidden="true">
       <div class="orbit orbit--outer"><span></span><span></span></div>
       <div class="orbit orbit--inner"><span></span></div>
-      <div class="hero-symbol"><b>余</b><small>YOH<br>AKU</small></div>
-      <div class="floating-note floating-note--one"><i></i><div><b>いま話題</b><span>小さな余白のつくりかた</span></div></div>
-      <div class="floating-note floating-note--two"><span>✦</span><div><b>NEW CONNECTION</b><span>言葉から、つながる。</span></div></div>
+      <div class="hero-symbol"><b>か</b><small>KAPI<br>BARA</small></div>
+      <div class="floating-note floating-note--one"><i></i><div><b>今日のひとこと</b><span>最近ハマってるもの、教えて！</span></div></div>
+      <div class="floating-note floating-note--two"><span>✦</span><div><b>NEW FRIEND</b><span>ひとことから、仲間になる。</span></div></div>
     </div>
   </section>
 
+  <% if (currentUser) { %>
+    <section class="quick-post-section shell" aria-labelledby="quick-post-title">
+      <form class="quick-post-card" method="post" action="/quick-post">
+        <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+        <%- include('partials/avatar', { avatar: currentUser.avatarUrl, initial: currentUser.displayName.slice(0, 1), size: 'medium' }) %>
+        <div><label id="quick-post-title" for="quick-post-body"><%= currentUser.displayName %>さん、今日はどうした？</label><textarea id="quick-post-body" name="body" rows="1" placeholder="ひとことだけでもOK。気軽に書いてみよう" required></textarea></div>
+        <button class="button button--primary" type="submit">投稿する <span>↗</span></button>
+      </form>
+      <p>ここからの投稿は「総合」に公開されます。タイトルは最初の一文から自動でつくります。</p>
+    </section>
+  <% } %>
+
   <section class="category-section shell" aria-labelledby="category-title">
-    <div class="section-heading"><div><p>EXPLORE BOARDS</p><h2 id="category-title">気になる場所へ</h2></div><span>いまの気分で、<br>話す場所を選ぼう。</span></div>
+    <div class="section-heading"><div><p>EXPLORE BOARDS</p><h2 id="category-title">今日は何を話す？</h2></div><span>ぴんときた場所を、<br>のぞいてみよう。</span></div>
     <div class="category-grid">
       <% categories.forEach(function(category, index) { %>
         <a class="category-card category-card--<%= category.slug %>" href="/boards/<%= category.slug %>">
           <span class="category-index">0<%= index + 1 %></span>
           <span class="category-icon"><%= category.icon %></span>
           <div><h3><%= category.name %></h3><p><%= category.description %></p></div>
-          <span class="category-count"><%= formatNumber(category.threadCount) %> topics <b>→</b></span>
+          <span class="category-count"><%= formatNumber(category.threadCount) %> 件 <b>→</b></span>
         </a>
       <% }) %>
     </div>
@@ -44,27 +56,27 @@
   <section class="feed-section shell" id="latest">
     <div class="content-grid">
       <div class="feed-column">
-        <div class="feed-header"><div><p>LATEST VOICES</p><h2>みんなの話題</h2></div><%- include('partials/sort-tabs', { basePath: '/' }) %></div>
+        <div class="feed-header"><div><p>LATEST TALKS</p><h2>新着トーク</h2></div><%- include('partials/sort-tabs', { basePath: '/' }) %></div>
         <div class="thread-list">
           <% threads.forEach(function(thread) { %><%- include('partials/thread-card', { thread: thread }) %><% }) %>
         </div>
       </div>
       <aside class="sidebar">
         <div class="sidebar-card trending-card">
-          <div class="sidebar-title"><span>↗</span><div><small>TRENDING NOW</small><h2>いま、伸びている話題</h2></div></div>
+          <div class="sidebar-title"><span>↗</span><div><small>TRENDING NOW</small><h2>いま盛り上がってる話</h2></div></div>
           <ol>
             <% trending.forEach(function(thread, index) { %>
-              <li><span>0<%= index + 1 %></span><div><a href="/threads/<%= thread.id %>"><%= thread.title %></a><small><%= formatNumber(thread.replyCount) %> replies ・ <%= thread.categoryName %></small></div></li>
+              <li><span>0<%= index + 1 %></span><div><a href="/threads/<%= thread.id %>"><%= thread.title %></a><small>返信 <%= formatNumber(thread.replyCount) %>件 ・ <%= thread.categoryName %></small></div></li>
             <% }) %>
           </ol>
         </div>
         <div class="sidebar-card welcome-card">
           <span class="welcome-spark">✦</span>
-          <small>WELCOME TO YOHaku</small><h2>はじめての方へ</h2>
-          <p>ここでは、詳しさよりも好奇心を大切にしています。相手の向こう側を想像しながら、気軽に話してみてください。</p>
-          <% if (!currentUser) { %><a href="/auth/google">コミュニティに参加 <span>→</span></a><% } else { %><a href="/new">最初の話題を投稿 <span>→</span></a><% } %>
+          <small>WELCOME TO KAPIBARA BOARD</small><h2>はじめまして！</h2>
+          <p>詳しくなくても、うまくまとまっていなくても大丈夫。好きなことや気になったことを、気軽に話してみよう。</p>
+          <% if (!currentUser) { %><a href="/auth/google">Googleで仲間になる <span>→</span></a><% } else { %><a href="/new">話題を投稿してみる <span>→</span></a><% } %>
         </div>
-        <div class="community-stats"><div><strong><%= formatNumber(stats.threads) %></strong><span>TOPICS</span></div><div><strong><%= formatNumber(stats.posts) %></strong><span>REPLIES</span></div></div>
+        <div class="community-stats"><div><strong><%= formatNumber(stats.threads) %></strong><span>話題</span></div><div><strong><%= formatNumber(stats.posts) %></strong><span>返信</span></div></div>
       </aside>
     </div>
   </section>

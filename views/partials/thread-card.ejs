@@ -5,7 +5,7 @@
   </div>
   <div class="thread-main">
     <div class="thread-eyebrow">
-      <% if (thread.isPinned) { %><span class="pinned-label">運営ピック</span><% } %>
+      <% if (thread.isPinned) { %><span class="pinned-label">おすすめ</span><% } %>
       <a class="category-label category-label--<%= thread.categorySlug %>" href="/boards/<%= thread.categorySlug %>"><i></i><%= thread.categoryName %></a>
       <span>・</span><time datetime="<%= thread.lastActivityAt.toISOString() %>" data-relative="<%= thread.lastActivityAt.toISOString() %>"><%= formatDate(thread.lastActivityAt) %></time>
     </div>

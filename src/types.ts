@@ -7,6 +7,7 @@ export interface User {
   avatarUrl: string | null;
   bio?: string | null;
   role: Role;
+  status?: 'active' | 'suspended' | 'deleted';
   createdAt?: Date;
 }
 
@@ -57,7 +58,49 @@ export interface ThreadDetail extends ThreadSummary {
   authorId: string;
   likedByViewer: boolean;
   bookmarkedByViewer: boolean;
+  status: 'published' | 'locked';
   posts: Post[];
+}
+
+export interface MemberSummary {
+  id: string;
+  displayName: string;
+  avatarUrl: string | null;
+  bio: string | null;
+  role: Role;
+  createdAt: Date;
+}
+
+export interface DirectMessage {
+  id: string;
+  senderId: string;
+  recipientId: string;
+  body: string;
+  createdAt: Date;
+  readAt: Date | null;
+}
+
+export interface ConversationSummary {
+  member: MemberSummary;
+  lastMessage: string;
+  lastMessageAt: Date;
+  unreadCount: number;
+}
+
+export interface AdminDashboard {
+  stats: { users: number; threads: number; posts: number; openReports: number };
+  users: Array<User & { threadCount: number }>;
+  threads: Array<ThreadSummary & { status: string }>;
+  reports: Array<{
+    id: string;
+    reason: string;
+    detail: string | null;
+    status: string;
+    createdAt: Date;
+    reporterName: string;
+    threadId: string | null;
+    threadTitle: string | null;
+  }>;
 }
 
 export interface HomeData {
