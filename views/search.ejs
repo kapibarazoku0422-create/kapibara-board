@@ -1,0 +1,13 @@
+<%- include('partials/head') %>
+<main id="main" class="inner-main search-page">
+  <section class="shell search-hero">
+    <p>SEARCH THE COMMUNITY</p><h1>言葉を探す。</h1>
+    <form action="/search" method="get"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="m21 21-4.35-4.35m2.35-5.65a8 8 0 1 1-16 0 8 8 0 0 1 16 0Z"/></svg><input type="search" name="q" value="<%= query %>" placeholder="キーワードを入力" autofocus><button type="submit">検索</button></form>
+  </section>
+  <section class="shell narrow-content">
+    <% if (query) { %><div class="result-heading"><h2>「<%= query %>」の検索結果</h2><span><%= threads.length %>件</span></div><% } %>
+    <% if (!query) { %><div class="empty-state"><span>⌕</span><h2>気になる言葉を入力してください</h2><p>タイトル、本文、タグから話題を探せます。</p></div><% } else if (!threads.length) { %><div class="empty-state"><span>◌</span><h2>見つかりませんでした</h2><p>別のキーワードや、短い言葉で試してみてください。</p></div><% } %>
+    <div class="thread-list"><% threads.forEach(function(thread) { %><%- include('partials/thread-card', { thread: thread }) %><% }) %></div>
+  </section>
+</main>
+<%- include('partials/footer') %>

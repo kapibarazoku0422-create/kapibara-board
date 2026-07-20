@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="ja" data-theme="light">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#f7f4ee">
+  <meta name="description" content="話したいことに、ちょうどいい居場所を。Googleアカウントで参加できるコミュニティ掲示板 YOHaku。">
+  <title><%= title %> | YOHaku</title>
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/styles.css">
+  <script src="/app.js" defer></script>
+</head>
+<body>
+  <a class="skip-link" href="#main">本文へ移動</a>
+  <div class="ambient ambient--one"></div>
+  <div class="ambient ambient--two"></div>
+  <header class="site-header">
+    <div class="shell header-inner">
+      <a class="brand" href="/" aria-label="YOHaku ホーム">
+        <span class="brand-mark" aria-hidden="true"><i></i><i></i><i></i></span>
+        <span class="brand-word">YOH<em>aku</em></span>
+      </a>
+      <form class="header-search" action="/search" method="get" role="search">
+        <svg aria-hidden="true" viewBox="0 0 24 24"><path d="m21 21-4.35-4.35m2.35-5.65a8 8 0 1 1-16 0 8 8 0 0 1 16 0Z"/></svg>
+        <input type="search" name="q" placeholder="話題を検索" aria-label="スレッドを検索">
+        <kbd>⌘ K</kbd>
+      </form>
+      <nav class="header-actions" aria-label="メインナビゲーション">
+        <button class="icon-button theme-toggle" type="button" aria-label="表示テーマを切り替える">
+          <svg class="sun-icon" aria-hidden="true" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M4.93 4.93l1.42 1.42m11.3 11.3 1.42 1.42M2 12h2m16 0h2M4.93 19.07l1.42-1.42m11.3-11.3 1.42-1.42"/></svg>
+        </button>
+        <% if (currentUser) { %>
+          <a class="new-thread-button" href="/new"><span>＋</span> 投稿する</a>
+          <a class="avatar-link" href="/me" aria-label="マイページ">
+            <% if (currentUser.avatarUrl) { %><img src="<%= currentUser.avatarUrl %>" alt=""><% } else { %><span><%= currentUser.displayName.slice(0, 1) %></span><% } %>
+          </a>
+        <% } else { %>
+          <a class="login-button" href="/auth/google"><span class="google-g">G</span> Googleで参加</a>
+        <% } %>
+      </nav>
+    </div>
+  </header>
+  <% if (flash) { %>
+    <div class="shell flash flash--<%= flash.type %>" role="status"><span><%= flash.message %></span><button type="button" aria-label="閉じる">×</button></div>
+  <% } %>
+  <% if (demoMode) { %>
+    <div class="preview-bar"><span></span> プレビューモード — PostgreSQLを接続すると投稿機能が有効になります</div>
+  <% } %>

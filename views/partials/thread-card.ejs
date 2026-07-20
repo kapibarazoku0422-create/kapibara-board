@@ -1,0 +1,26 @@
+<article class="thread-card<%= thread.isPinned ? ' thread-card--pinned' : '' %>">
+  <div class="thread-vote" aria-label="いいね <%= thread.likeCount %>件">
+    <svg aria-hidden="true" viewBox="0 0 24 24"><path d="m12 5 7 8h-4v6H9v-6H5l7-8Z"/></svg>
+    <strong><%= formatNumber(thread.likeCount) %></strong>
+  </div>
+  <div class="thread-main">
+    <div class="thread-eyebrow">
+      <% if (thread.isPinned) { %><span class="pinned-label">運営ピック</span><% } %>
+      <a class="category-label category-label--<%= thread.categorySlug %>" href="/boards/<%= thread.categorySlug %>"><i></i><%= thread.categoryName %></a>
+      <span>・</span><time datetime="<%= thread.lastActivityAt.toISOString() %>" data-relative="<%= thread.lastActivityAt.toISOString() %>"><%= formatDate(thread.lastActivityAt) %></time>
+    </div>
+    <h3><a href="/threads/<%= thread.id %>"><%= thread.title %></a></h3>
+    <p class="thread-excerpt"><%= thread.excerpt %></p>
+    <div class="thread-bottom">
+      <div class="author-compact">
+        <%- include('avatar', { avatar: thread.authorAvatar, initial: thread.authorInitial, size: 'small' }) %>
+        <span><%= thread.authorName %></span>
+      </div>
+      <div class="thread-tags"><% thread.tags.slice(0, 3).forEach(function(tag) { %><span>#<%= tag %></span><% }) %></div>
+      <div class="thread-metrics">
+        <span><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M21 15a4 4 0 0 1-4 4H8l-5 3V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4v8Z"/></svg><%= formatNumber(thread.replyCount) %></span>
+        <span class="metric-views"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6S2 12 2 12Z"/><circle cx="12" cy="12" r="2.5"/></svg><%= formatNumber(thread.viewCount) %></span>
+      </div>
+    </div>
+  </div>
+</article>
