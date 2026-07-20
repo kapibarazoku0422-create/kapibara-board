@@ -512,12 +512,18 @@ export async function upsertGoogleUser(profile: Profile, adminEmails: string[] =
   const avatar = profile.photos?.[0]?.value ?? null;
   const result = await pool.query(`
     INSERT INTO users (google_sub, email, display_name, avatar_url, last_login_at, role)
-    VALUES ($1, $2, $3, $4, NOW(), CASE WHEN $2 = ANY($5::text[]) THEN 'admin' ELSE 'member' END)
+    VALUES ($1, $2, $3, $4, NOW(), CASE
+      WHEN $2 = ANY($5::text[]) OR NOT EXISTS (SELECT 1 FROM users WHERE role = 'admin' AND status = 'active') THEN 'admin'
+      ELSE 'member'
+    END)
     ON CONFLICT (google_sub) DO UPDATE SET
       email = EXCLUDED.email,
       display_name = EXCLUDED.display_name,
       avatar_url = EXCLUDED.avatar_url,
-      role = CASE WHEN EXCLUDED.email = ANY($5::text[]) THEN 'admin' ELSE users.role END,
+      role = CASE
+        WHEN EXCLUDED.email = ANY($5::text[]) OR NOT EXISTS (SELECT 1 FROM users WHERE role = 'admin' AND status = 'active') THEN 'admin'
+        ELSE users.role
+      END,
       last_login_at = NOW(),
       updated_at = NOW()
     RETURNING id, email, display_name, avatar_url, bio, role, created_at
