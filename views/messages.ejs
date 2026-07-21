@@ -1,18 +1,17 @@
 <%- include('partials/head') %>
-<main id="main" class="inner-main social-page">
-  <section class="shell social-hero social-hero--compact">
-    <div><p>DIRECT MESSAGES</p><h1>DM</h1><span>ふたりだけで、のんびり話そう。</span></div>
-    <a class="button button--primary" href="/members">話す相手を探す <span>→</span></a>
-  </section>
-  <section class="shell inbox-list">
-    <% conversations.forEach(function(conversation) { %>
-      <a class="inbox-card<%= conversation.unreadCount ? ' has-unread' : '' %>" href="/messages/<%= conversation.member.id %>">
-        <%- include('partials/avatar', { avatar: conversation.member.avatarUrl, initial: conversation.member.displayName.slice(0, 1), size: 'large' }) %>
-        <div><h2><%= conversation.member.displayName %><% if (conversation.unreadCount) { %><b><%= conversation.unreadCount %></b><% } %></h2><p><%= conversation.lastMessage %></p></div>
-        <time datetime="<%= conversation.lastMessageAt.toISOString() %>" data-relative="<%= conversation.lastMessageAt.toISOString() %>"><%= formatDate(conversation.lastMessageAt) %></time>
-      </a>
-    <% }) %>
-    <% if (!conversations.length) { %><div class="empty-state"><span>✉</span><h2>DMはまだありません</h2><p>気になるメンバーに「こんにちは」を送ってみよう。</p><a class="button button--primary" href="/members">メンバーを見る</a></div><% } %>
-  </section>
+<main id="main" class="feed-layout feed-layout--single">
+  <div class="feed-column">
+    <div class="feed-top"><h1 class="feed-title">DM</h1><a class="button button--primary" href="/members">相手を探す</a></div>
+    <div class="inbox-list">
+      <% conversations.forEach(function(conversation) { %>
+        <a class="inbox-card<%= conversation.unreadCount ? ' has-unread' : '' %>" href="/messages/<%= conversation.member.id %>">
+          <%- include('partials/avatar', { avatar: conversation.member.avatarUrl, initial: conversation.member.displayName.slice(0, 1), size: 'large' }) %>
+          <div><h2><%= conversation.member.displayName %><% if (conversation.unreadCount) { %><b><%= conversation.unreadCount %></b><% } %></h2><p><%= conversation.lastMessage %></p></div>
+          <time datetime="<%= conversation.lastMessageAt.toISOString() %>" data-relative="<%= conversation.lastMessageAt.toISOString() %>"><%= formatDate(conversation.lastMessageAt) %></time>
+        </a>
+      <% }) %>
+      <% if (!conversations.length) { %><div class="empty-state"><span>✉</span><h2>DMはまだありません</h2><p>気になるメンバーに「こんにちは」を送ってみよう。</p><a class="button button--primary" href="/members">メンバーを見る</a></div><% } %>
+    </div>
+  </div>
 </main>
 <%- include('partials/footer') %>

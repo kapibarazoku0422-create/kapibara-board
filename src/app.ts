@@ -62,11 +62,24 @@ app.use(
 app.use(passport.initialize());
 app.use(passport.session());
 
+let navCategoriesCache: { data: Awaited<ReturnType<typeof repository.getCategories>>; expiresAt: number } | null = null;
+async function getNavCategories() {
+  if (navCategoriesCache && navCategoriesCache.expiresAt > Date.now()) return navCategoriesCache.data;
+  const data = await repository.getCategories();
+  navCategoriesCache = { data, expiresAt: Date.now() + 30_000 };
+  return data;
+}
+
 app.use(async (req, res, next) => {
   if (!req.session.csrfToken) req.session.csrfToken = randomBytes(24).toString('hex');
   res.locals.csrfToken = req.session.csrfToken;
   res.locals.currentUser = req.user ?? null;
   res.locals.currentPath = req.path;
+  try {
+    res.locals.navCategories = await getNavCategories();
+  } catch {
+    res.locals.navCategories = [];
+  }
   res.locals.googleAuthEnabled = config.googleAuthEnabled;
   res.locals.demoMode = config.demoMode;
   res.locals.flash = req.session.flash ?? null;

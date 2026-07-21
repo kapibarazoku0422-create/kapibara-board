@@ -1,13 +1,19 @@
 <%- include('partials/head') %>
-<main id="main" class="inner-main profile-page">
-  <section class="shell profile-hero">
-    <%- include('partials/avatar', { avatar: currentUser.avatarUrl, initial: currentUser.displayName.slice(0, 1), size: 'xlarge' }) %>
-    <div><p>MY PAGE</p><h1><%= currentUser.displayName %></h1><span><%= currentUser.email %></span></div>
-    <form method="post" action="/logout"><input type="hidden" name="_csrf" value="<%= csrfToken %>"><button class="plain-action" type="submit">ログアウト</button></form>
-  </section>
-  <section class="shell profile-grid">
-    <div><div class="result-heading"><h2>投稿した話題</h2><span><%= authored.length %>件</span></div><div class="thread-list"><% authored.forEach(function(thread) { %><%- include('partials/thread-card', { thread: thread }) %><% }) %><% if (!authored.length) { %><div class="empty-state empty-state--compact"><span>✎</span><h2>まだ投稿はありません</h2><a href="/new">最初の話題をつくってみる →</a></div><% } %></div></div>
-    <div><div class="result-heading"><h2>あとで読む</h2><span><%= bookmarked.length %>件</span></div><div class="thread-list"><% bookmarked.forEach(function(thread) { %><%- include('partials/thread-card', { thread: thread }) %><% }) %><% if (!bookmarked.length) { %><div class="empty-state empty-state--compact"><span>◇</span><h2>気になる話題を保存してみよう</h2><a href="/">話題を見つけにいく →</a></div><% } %></div></div>
-  </section>
+<main id="main" class="feed-layout feed-layout--single">
+  <div class="feed-column">
+    <section class="profile-hero">
+      <%- include('partials/avatar', { avatar: currentUser.avatarUrl, initial: currentUser.displayName.slice(0, 1), size: 'xlarge' }) %>
+      <div><h1><%= currentUser.displayName %></h1><span><%= currentUser.email %></span></div>
+      <form method="post" action="/logout"><input type="hidden" name="_csrf" value="<%= csrfToken %>"><button class="plain-action" type="submit">ログアウト</button></form>
+    </section>
+    <section class="profile-block">
+      <div class="result-heading"><h2>立てたスレ</h2><span><%= authored.length %>件</span></div>
+      <div class="thread-list"><% authored.forEach(function(thread) { %><%- include('partials/thread-card', { thread: thread }) %><% }) %><% if (!authored.length) { %><div class="empty-state empty-state--compact"><span>✎</span><h2>まだスレはありません</h2><a href="/new">最初のスレを立ててみる →</a></div><% } %></div>
+    </section>
+    <section class="profile-block">
+      <div class="result-heading"><h2>保存したスレ</h2><span><%= bookmarked.length %>件</span></div>
+      <div class="thread-list"><% bookmarked.forEach(function(thread) { %><%- include('partials/thread-card', { thread: thread }) %><% }) %><% if (!bookmarked.length) { %><div class="empty-state empty-state--compact"><span>◇</span><h2>気になるスレを保存してみよう</h2><a href="/">スレを見つけにいく →</a></div><% } %></div>
+    </section>
+  </div>
 </main>
 <%- include('partials/footer') %>

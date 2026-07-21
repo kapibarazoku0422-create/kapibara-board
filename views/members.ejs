@@ -1,19 +1,25 @@
 <%- include('partials/head') %>
-<main id="main" class="inner-main social-page">
-  <section class="shell social-hero">
-    <div><p>MEET THE COMMUNITY</p><h1>話してみたい人を<br>見つけよう。</h1><span>気になる人に、そのままDMを送れます。</span></div>
-    <form action="/members" method="get"><input type="search" name="q" value="<%= query %>" placeholder="名前で探す"><button type="submit">探す</button></form>
-  </section>
-  <section class="shell member-grid">
-    <% members.forEach(function(member) { %>
-      <article class="member-card">
-        <%- include('partials/avatar', { avatar: member.avatarUrl, initial: member.displayName.slice(0, 1), size: 'xlarge' }) %>
-        <div><h2><%= member.displayName %></h2><span><%= member.role === 'admin' ? '管理者' : member.role === 'moderator' ? 'モデレーター' : 'メンバー' %></span></div>
-        <p><%= member.bio || 'Kapibara Boardの仲間です。' %></p>
-        <a class="button button--primary" href="/messages/<%= member.id %>">DMを送る <span>→</span></a>
-      </article>
-    <% }) %>
-    <% if (!members.length) { %><div class="empty-state member-empty"><span>◌</span><h2>まだ見つからなかったみたい</h2><p>別の名前でも探してみてね。</p></div><% } %>
-  </section>
+<main id="main" class="feed-layout feed-layout--single">
+  <div class="feed-column">
+    <div class="feed-top"><h1 class="feed-title">メンバー</h1></div>
+    <form class="search-bar" action="/members" method="get">
+      <svg aria-hidden="true" viewBox="0 0 24 24"><path d="m21 21-4.35-4.35m2.35-5.65a8 8 0 1 1-16 0 8 8 0 0 1 16 0Z"/></svg>
+      <input type="search" name="q" value="<%= query %>" placeholder="名前で探す">
+      <button type="submit">探す</button>
+    </form>
+    <div class="member-list">
+      <% members.forEach(function(member) { %>
+        <article class="member-row">
+          <%- include('partials/avatar', { avatar: member.avatarUrl, initial: member.displayName.slice(0, 1), size: 'large' }) %>
+          <div class="member-info">
+            <h2><%= member.displayName %><% if (member.role !== 'member') { %><span class="res-role res-role--staff"><%= member.role === 'admin' ? '管理者' : 'モデレーター' %></span><% } %></h2>
+            <p><%= member.bio || 'Kapibara Boardの住人です。' %></p>
+          </div>
+          <a class="button button--primary" href="/messages/<%= member.id %>">DM</a>
+        </article>
+      <% }) %>
+      <% if (!members.length) { %><div class="empty-state"><span>◌</span><h2>見つかりませんでした</h2><p>別の名前でも探してみてね。</p></div><% } %>
+    </div>
+  </div>
 </main>
 <%- include('partials/footer') %>

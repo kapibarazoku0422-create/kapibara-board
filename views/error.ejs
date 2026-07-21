@@ -1,6 +1,8 @@
 <%- include('partials/head') %>
-<main id="main" class="error-page shell">
-  <div class="error-number"><span><%= status %></span><i>か</i></div>
-  <p>OOPS!</p><h1><%= title %></h1><span><%= message %></span><a class="button button--primary" href="/">トップに戻る <b>→</b></a>
+<main id="main" class="feed-layout feed-layout--single">
+  <div class="feed-column error-page">
+    <div class="error-number"><span><%= status %></span><i>か</i></div>
+    <h1><%= title %></h1><span><%= message %></span><a class="button button--primary" href="/">トップに戻る</a>
+  </div>
 </main>
 <%- include('partials/footer') %>

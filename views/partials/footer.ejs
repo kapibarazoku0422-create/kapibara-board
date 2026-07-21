@@ -1,14 +1,24 @@
-  <footer class="site-footer">
-    <div class="shell footer-inner">
-      <div><span class="footer-mark">か</span><p>好きな話を、好きなだけ。<br>のんびり集まる掲示板。</p></div>
-      <nav aria-label="フッターナビゲーション">
-        <a href="/">ホーム</a>
-        <a href="/search">検索</a>
-        <% if (currentUser) { %><a href="/members">メンバー</a><a href="/messages">DM</a><% } %>
-        <a href="/boards/questions">使い方・質問</a>
-      </nav>
-      <small>© <%= new Date().getFullYear() %> Kapibara Board</small>
+      <footer class="site-footer">
+        <nav aria-label="フッターナビゲーション">
+          <a href="/">ホーム</a>
+          <a href="/search">検索</a>
+          <% if (currentUser) { %><a href="/members">メンバー</a><a href="/messages">DM</a><% } %>
+          <a href="/boards/questions">使い方・質問</a>
+        </nav>
+        <small>© <%= new Date().getFullYear() %> Kapibara Board</small>
+      </footer>
     </div>
-  </footer>
+  </div>
+  <nav class="mobile-nav" aria-label="モバイルナビゲーション">
+    <a href="/" class="<%= currentPath === '/' ? 'is-active' : '' %>" aria-label="ホーム"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="m3 10 9-7 9 7v10a1 1 0 0 1-1 1h-5v-6h-6v6H4a1 1 0 0 1-1-1V10Z"/></svg></a>
+    <a href="/search" class="<%= currentPath === '/search' ? 'is-active' : '' %>" aria-label="検索"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="m21 21-4.35-4.35m2.35-5.65a8 8 0 1 1-16 0 8 8 0 0 1 16 0Z"/></svg></a>
+    <% if (currentUser) { %>
+      <a href="/new" class="mobile-nav-new" aria-label="スレ立て"><span>＋</span></a>
+      <a href="/messages" class="<%= currentPath.startsWith('/messages') ? 'is-active' : '' %>" aria-label="DM"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M21 15a4 4 0 0 1-4 4H8l-5 3V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4v8Z"/></svg><% if (unreadMessages) { %><b><%= unreadMessages > 99 ? '99+' : unreadMessages %></b><% } %></a>
+      <a href="/me" class="<%= currentPath === '/me' ? 'is-active' : '' %>" aria-label="マイページ"><svg aria-hidden="true" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 3.5-7 8-7s8 3 8 7"/></svg></a>
+    <% } else { %>
+      <a href="/auth/google" aria-label="ログイン"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4M10 17l5-5-5-5M15 12H3"/></svg></a>
+    <% } %>
+  </nav>
 </body>
 </html>

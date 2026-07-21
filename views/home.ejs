@@ -1,84 +1,62 @@
 <%- include('partials/head') %>
-<main id="main">
-  <section class="hero shell">
-    <div class="hero-copy">
-      <p class="kicker"><span></span> HELLO, KAPIBARA!</p>
-      <h1>好きな話を、<br><em>のんびり</em>しよう。</h1>
-      <p class="hero-lead">ふと思ったこと、最近ハマっていること、みんなに聞いてみたいこと。<br>気軽に書いて、ゆるくつながる掲示板です。</p>
-      <div class="hero-actions">
-        <% if (currentUser) { %>
-          <a class="button button--primary" href="/new">話題をつくってみる <span>↗</span></a>
-        <% } else { %>
-          <a class="button button--primary" href="/auth/google">Googleではじめる <span>↗</span></a>
-        <% } %>
-        <a class="text-link" href="#latest">ちょっとのぞいてみる <span>↓</span></a>
-      </div>
-      <div class="community-proof">
-        <div class="avatar-stack"><span>あ</span><span>R</span><span>む</span><span>+</span></div>
-        <p><strong><%= formatNumber(stats.members) %>人</strong>の仲間がいます<br><small>いま <i></i> <%= formatNumber(stats.online) %>人がのんびり参加中</small></p>
-      </div>
+<main id="main" class="feed-layout">
+  <div class="feed-column">
+    <div class="feed-top">
+      <h1 class="feed-title">ホーム</h1>
+      <%- include('partials/sort-tabs', { basePath: '/' }) %>
     </div>
-    <div class="hero-art" aria-hidden="true">
-      <div class="orbit orbit--outer"><span></span><span></span></div>
-      <div class="orbit orbit--inner"><span></span></div>
-      <div class="hero-symbol"><b>か</b><small>KAPI<br>BARA</small></div>
-      <div class="floating-note floating-note--one"><i></i><div><b>今日のひとこと</b><span>最近ハマってるもの、教えて！</span></div></div>
-      <div class="floating-note floating-note--two"><span>✦</span><div><b>NEW FRIEND</b><span>ひとことから、仲間になる。</span></div></div>
-    </div>
-  </section>
 
-  <% if (currentUser) { %>
-    <section class="quick-post-section shell" aria-labelledby="quick-post-title">
-      <form class="quick-post-card" method="post" action="/quick-post">
+    <% if (currentUser) { %>
+      <form class="quick-post" method="post" action="/quick-post">
         <input type="hidden" name="_csrf" value="<%= csrfToken %>">
         <%- include('partials/avatar', { avatar: currentUser.avatarUrl, initial: currentUser.displayName.slice(0, 1), size: 'medium' }) %>
-        <div><label id="quick-post-title" for="quick-post-body"><%= currentUser.displayName %>さん、今日はどうした？</label><textarea id="quick-post-body" name="body" rows="1" placeholder="ひとことだけでもOK。気軽に書いてみよう" required></textarea></div>
-        <button class="button button--primary" type="submit">投稿する <span>↗</span></button>
+        <div class="quick-post-body">
+          <label class="visually-hidden" for="quick-post-body">いまどうしてる？</label>
+          <textarea id="quick-post-body" name="body" rows="1" placeholder="いまどうしてる？" required></textarea>
+          <div class="quick-post-bottom">
+            <span>「総合」にスレとして投稿されます</span>
+            <button class="button button--primary" type="submit">投稿</button>
+          </div>
+        </div>
       </form>
-      <p>ここからの投稿は「総合」に公開されます。タイトルは最初の一文から自動でつくります。</p>
-    </section>
-  <% } %>
-
-  <section class="category-section shell" aria-labelledby="category-title">
-    <div class="section-heading"><div><p>EXPLORE BOARDS</p><h2 id="category-title">今日は何を話す？</h2></div><span>ぴんときた場所を、<br>のぞいてみよう。</span></div>
-    <div class="category-grid">
-      <% categories.forEach(function(category, index) { %>
-        <a class="category-card category-card--<%= category.slug %>" href="/boards/<%= category.slug %>">
-          <span class="category-index">0<%= index + 1 %></span>
-          <span class="category-icon"><%= category.icon %></span>
-          <div><h3><%= category.name %></h3><p><%= category.description %></p></div>
-          <span class="category-count"><%= formatNumber(category.threadCount) %> 件 <b>→</b></span>
-        </a>
-      <% }) %>
-    </div>
-  </section>
-
-  <section class="feed-section shell" id="latest">
-    <div class="content-grid">
-      <div class="feed-column">
-        <div class="feed-header"><div><p>LATEST TALKS</p><h2>新着トーク</h2></div><%- include('partials/sort-tabs', { basePath: '/' }) %></div>
-        <div class="thread-list">
-          <% threads.forEach(function(thread) { %><%- include('partials/thread-card', { thread: thread }) %><% }) %>
-        </div>
+    <% } else { %>
+      <div class="guest-banner">
+        <div><b>ようこそ、Kapibara Boardへ</b><span>読むのは自由。書き込むならログイン。</span></div>
+        <a class="login-button" href="/auth/google"><span class="google-g">G</span> Googleではじめる</a>
       </div>
-      <aside class="sidebar">
-        <div class="sidebar-card trending-card">
-          <div class="sidebar-title"><span>↗</span><div><small>TRENDING NOW</small><h2>いま盛り上がってる話</h2></div></div>
-          <ol>
-            <% trending.forEach(function(thread, index) { %>
-              <li><span>0<%= index + 1 %></span><div><a href="/threads/<%= thread.id %>"><%= thread.title %></a><small>返信 <%= formatNumber(thread.replyCount) %>件 ・ <%= thread.categoryName %></small></div></li>
-            <% }) %>
-          </ol>
-        </div>
-        <div class="sidebar-card welcome-card">
-          <span class="welcome-spark">✦</span>
-          <small>WELCOME TO KAPIBARA BOARD</small><h2>はじめまして！</h2>
-          <p>詳しくなくても、うまくまとまっていなくても大丈夫。好きなことや気になったことを、気軽に話してみよう。</p>
-          <% if (!currentUser) { %><a href="/auth/google">Googleで仲間になる <span>→</span></a><% } else { %><a href="/new">話題を投稿してみる <span>→</span></a><% } %>
-        </div>
-        <div class="community-stats"><div><strong><%= formatNumber(stats.threads) %></strong><span>話題</span></div><div><strong><%= formatNumber(stats.posts) %></strong><span>返信</span></div></div>
-      </aside>
+    <% } %>
+
+    <div class="thread-list" id="latest">
+      <% threads.forEach(function(thread) { %><%- include('partials/thread-card', { thread: thread }) %><% }) %>
+      <% if (!threads.length) { %><div class="empty-state"><span>◌</span><h2>まだスレがありません</h2><p>最初のスレを立ててみよう。</p></div><% } %>
     </div>
-  </section>
+  </div>
+
+  <aside class="right-rail">
+    <section class="rail-card">
+      <h2 class="rail-title">トレンド</h2>
+      <ol class="trend-list">
+        <% trending.forEach(function(thread, index) { %>
+          <li>
+            <span class="trend-rank"><%= index + 1 %></span>
+            <div>
+              <a href="/threads/<%= thread.id %>"><%= thread.title %></a>
+              <small><%= thread.categoryName %> · レス<%= formatNumber(thread.replyCount) %>件</small>
+            </div>
+          </li>
+        <% }) %>
+      </ol>
+    </section>
+    <section class="rail-card rail-card--stats">
+      <h2 class="rail-title">コミュニティ</h2>
+      <div class="rail-stats">
+        <div><strong><%= formatNumber(stats.members) %></strong><span>メンバー</span></div>
+        <div><strong><%= formatNumber(stats.threads) %></strong><span>スレ</span></div>
+        <div><strong><%= formatNumber(stats.posts) %></strong><span>レス</span></div>
+        <div><strong class="online-now"><i></i><%= formatNumber(stats.online) %></strong><span>オンライン</span></div>
+      </div>
+      <% if (!currentUser) { %><a class="rail-cta" href="/auth/google">Googleで参加する →</a><% } else { %><a class="rail-cta" href="/new">スレを立てる →</a><% } %>
+    </section>
+  </aside>
 </main>
 <%- include('partials/footer') %>

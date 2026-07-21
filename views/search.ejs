@@ -1,13 +1,15 @@
 <%- include('partials/head') %>
-<main id="main" class="inner-main search-page">
-  <section class="shell search-hero">
-    <p>SEARCH KAPIBARA BOARD</p><h1>何の話を探す？</h1>
-    <form action="/search" method="get"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="m21 21-4.35-4.35m2.35-5.65a8 8 0 1 1-16 0 8 8 0 0 1 16 0Z"/></svg><input type="search" name="q" value="<%= query %>" placeholder="キーワードを入力" autofocus><button type="submit">検索</button></form>
-  </section>
-  <section class="shell narrow-content">
+<main id="main" class="feed-layout feed-layout--single">
+  <div class="feed-column">
+    <div class="feed-top"><h1 class="feed-title">検索</h1></div>
+    <form class="search-bar" action="/search" method="get">
+      <svg aria-hidden="true" viewBox="0 0 24 24"><path d="m21 21-4.35-4.35m2.35-5.65a8 8 0 1 1-16 0 8 8 0 0 1 16 0Z"/></svg>
+      <input type="search" name="q" value="<%= query %>" placeholder="キーワードで探す" autofocus>
+      <button type="submit">検索</button>
+    </form>
     <% if (query) { %><div class="result-heading"><h2>「<%= query %>」の検索結果</h2><span><%= threads.length %>件</span></div><% } %>
-    <% if (!query) { %><div class="empty-state"><span>⌕</span><h2>気になる言葉を入れてみよう</h2><p>タイトル、本文、タグから探せるよ。</p></div><% } else if (!threads.length) { %><div class="empty-state"><span>◌</span><h2>ぴったりの話題はなかったみたい</h2><p>別の言葉や、もう少し短い言葉でも探してみてね。</p></div><% } %>
+    <% if (!query) { %><div class="empty-state"><span>⌕</span><h2>気になる言葉を入れてみよう</h2><p>タイトル、本文、タグから探せます。</p></div><% } else if (!threads.length) { %><div class="empty-state"><span>◌</span><h2>ヒットしませんでした</h2><p>別の言葉や、もう少し短い言葉でも探してみてね。</p></div><% } %>
     <div class="thread-list"><% threads.forEach(function(thread) { %><%- include('partials/thread-card', { thread: thread }) %><% }) %></div>
-  </section>
+  </div>
 </main>
 <%- include('partials/footer') %>

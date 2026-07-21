@@ -1,10 +1,10 @@
 <%- include('partials/head') %>
-<main id="main" class="inner-main conversation-page" data-live-dm="<%= member.id %>">
+<main id="main" class="conversation-page" data-live-dm="<%= member.id %>">
   <section class="conversation-shell">
     <header class="conversation-header">
       <a href="/messages" aria-label="DM一覧へ戻る">←</a>
       <%- include('partials/avatar', { avatar: member.avatarUrl, initial: member.displayName.slice(0, 1), size: 'medium' }) %>
-      <div><h1><%= member.displayName %></h1><span><i></i> リアルタイムで会話中</span></div>
+      <div><h1><%= member.displayName %></h1><span><i></i> リアルタイム</span></div>
     </header>
     <div class="message-list" id="live-messages" data-current-user="<%= currentUser.id %>">
       <% messages.forEach(function(message, index) { %>
@@ -16,8 +16,8 @@
     </div>
     <form class="message-composer" method="post" action="/messages/<%= member.id %>">
       <input type="hidden" name="_csrf" value="<%= csrfToken %>">
-      <textarea name="body" rows="1" placeholder="メッセージを書く…" required autofocus></textarea>
-      <button type="submit" aria-label="送信">送る <span>↗</span></button>
+      <textarea name="body" rows="1" placeholder="@<%= member.displayName %> にメッセージを送信" required autofocus></textarea>
+      <button type="submit" aria-label="送信"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="m3 12 18-8-6 18-3-7-9-3Z"/></svg></button>
     </form>
   </section>
 </main>

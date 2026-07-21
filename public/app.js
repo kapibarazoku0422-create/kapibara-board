@@ -1,8 +1,8 @@
 (() => {
   const root = document.documentElement;
   const storedTheme = localStorage.getItem('kapibara-theme');
-  const preferredDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-  root.dataset.theme = storedTheme || (preferredDark ? 'dark' : 'light');
+  const preferredLight = window.matchMedia('(prefers-color-scheme: light)').matches;
+  root.dataset.theme = storedTheme || (preferredLight ? 'light' : 'dark');
 
   document.querySelector('.theme-toggle')?.addEventListener('click', () => {
     const next = root.dataset.theme === 'dark' ? 'light' : 'dark';
@@ -30,22 +30,23 @@
     const update = () => {
       if (counter) counter.textContent = new Intl.NumberFormat('ja-JP').format(textarea.value.length);
       textarea.style.height = 'auto';
-      textarea.style.height = `${Math.max(textarea.scrollHeight, 130)}px`;
+      textarea.style.height = `${Math.min(Math.max(textarea.scrollHeight, 44), 320)}px`;
     };
     textarea.addEventListener('input', update);
     update();
   });
 
-  document.querySelectorAll('.quote-button').forEach((button) => {
+  const bindQuoteButton = (button) => {
     button.addEventListener('click', () => {
       const textarea = document.querySelector('#reply-body');
       if (!textarea) return;
-      textarea.value += `${textarea.value ? '\n\n' : ''}@${button.dataset.author} `;
+      textarea.value += `${textarea.value ? '\n' : ''}>>${button.dataset.number} `;
       textarea.dispatchEvent(new Event('input'));
       textarea.focus();
       document.querySelector('#reply')?.scrollIntoView({ behavior: 'smooth' });
     });
-  });
+  };
+  document.querySelectorAll('.quote-button').forEach(bindQuoteButton);
 
   document.querySelector('.share-button')?.addEventListener('click', async (event) => {
     const button = event.currentTarget;
@@ -62,7 +63,7 @@
     }
   });
 
-  const search = document.querySelector('.header-search input');
+  const search = document.querySelector('.topbar-search input');
   document.addEventListener('keydown', (event) => {
     if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k') {
       event.preventDefault();
@@ -87,13 +88,16 @@
       const payload = JSON.parse(event.data);
       if (payload.type !== 'post' || !replies || replies.querySelector(`[data-post-id="${CSS.escape(payload.post.id)}"]`)) return;
       const post = payload.post;
+      const number = replies.querySelectorAll('[data-post-id]').length + 2;
+      replies.querySelector('.res-empty')?.remove();
+
       const article = document.createElement('article');
-      article.className = 'reply-card';
+      article.className = 'res';
       article.dataset.postId = post.id;
+      article.dataset.number = String(number);
+      replies.querySelector('#latest')?.removeAttribute('id');
       article.id = 'latest';
 
-      const rail = document.createElement('div');
-      rail.className = 'reply-rail';
       const avatar = document.createElement('span');
       avatar.className = 'avatar avatar--medium';
       if (post.authorAvatar) {
@@ -106,39 +110,45 @@
         initial.textContent = post.authorInitial;
         avatar.append(initial);
       }
-      rail.append(avatar, document.createElement('span'));
 
       const content = document.createElement('div');
-      content.className = 'reply-content';
+      content.className = 'res-main';
       const header = document.createElement('header');
-      const author = document.createElement('div');
+      header.className = 'res-header';
+      const num = document.createElement('span');
+      num.className = 'res-num';
+      num.textContent = String(number);
       const name = document.createElement('b');
+      name.className = 'res-name';
       name.textContent = post.authorName;
-      author.append(name);
+      header.append(num, name);
       if (post.authorRole !== 'member') {
         const role = document.createElement('span');
-        role.className = 'role-badge';
+        role.className = 'res-role res-role--staff';
         role.textContent = post.authorRole === 'admin' ? '管理者' : 'モデレーター';
-        author.append(role);
+        header.append(role);
       }
-      const meta = document.createElement('div');
       const time = document.createElement('time');
       time.dateTime = post.createdAt;
       time.textContent = 'たった今';
-      meta.append(time);
-      header.append(author, meta);
+      header.append(time);
+
       const body = document.createElement('div');
-      body.className = 'rich-body rich-body--reply';
+      body.className = 'res-body rich-body';
       body.textContent = post.body;
+
       const footer = document.createElement('footer');
-      const thanks = document.createElement('button');
-      thanks.type = 'button';
-      thanks.className = 'mini-action';
-      thanks.textContent = '♡ いいね';
-      footer.append(thanks);
+      footer.className = 'res-footer';
+      const quote = document.createElement('button');
+      quote.type = 'button';
+      quote.className = 'mini-action quote-button';
+      quote.dataset.number = String(number);
+      quote.textContent = `↩ >>${number}`;
+      bindQuoteButton(quote);
+      footer.append(quote);
+
       content.append(header, body, footer);
-      replies.querySelector('#latest')?.removeAttribute('id');
-      article.append(rail, content);
+      article.append(avatar, content);
       replies.append(article);
       const count = document.querySelector('[data-reply-count]');
       if (count) count.textContent = new Intl.NumberFormat('ja-JP').format(replies.querySelectorAll('[data-post-id]').length);

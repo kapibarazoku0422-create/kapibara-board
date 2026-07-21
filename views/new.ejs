@@ -1,34 +1,37 @@
 <%- include('partials/head') %>
-<main id="main" class="inner-main form-page">
-  <div class="shell form-shell">
-    <nav class="breadcrumbs" aria-label="パンくず"><a href="/">ホーム</a><span>/</span><b>話題をつくる</b></nav>
-    <div class="form-intro"><p>START A CONVERSATION</p><h1>今日は何を<br>話そうか？</h1><span>きれいにまとめなくても大丈夫。<br>いつもの言葉で書いてみよう。</span></div>
+<main id="main" class="feed-layout feed-layout--single">
+  <div class="feed-column">
+    <nav class="breadcrumbs" aria-label="パンくず"><a href="/">ホーム</a><span>›</span><b>スレ立て</b></nav>
+    <div class="feed-top"><h1 class="feed-title">新しいスレを立てる</h1></div>
     <form class="topic-form" method="post" action="/threads">
       <input type="hidden" name="_csrf" value="<%= csrfToken %>">
       <div class="field-group">
-        <label for="categoryId"><span>01</span><b>どこで話しますか？</b></label>
+        <label class="field-label" for="categoryId">ボードを選ぶ</label>
         <div class="category-options">
           <% categories.forEach(function(category) { %>
-            <label class="category-option category-option--<%= category.slug %>"><input type="radio" name="categoryId" value="<%= category.id %>" <%= String(values.categoryId || '') === String(category.id) ? 'checked' : '' %> required><span class="category-icon"><%= category.icon %></span><strong><%= category.name %></strong><small><%= category.description %></small><i>✓</i></label>
+            <label class="category-option category-option--<%= category.slug %>"><input type="radio" name="categoryId" value="<%= category.id %>" <%= String(values.categoryId || '') === String(category.id) ? 'checked' : '' %> required><span class="board-hash">#</span><strong><%= category.name %></strong></label>
           <% }) %>
         </div>
         <% if (errors.categoryId) { %><p class="field-error"><%= errors.categoryId[0] %></p><% } %>
       </div>
       <div class="field-group">
-        <label for="title"><span>02</span><b>タイトル</b><small>どんな話なのか、ひとことで教えてね</small></label>
-        <input class="large-input" id="title" type="text" name="title" value="<%= values.title || '' %>" placeholder="例：最近、心に残った言葉を教えてください" required>
+        <label class="field-label" for="title">スレタイ</label>
+        <input class="large-input" id="title" type="text" name="title" value="<%= values.title || '' %>" placeholder="例：最近ハマってるもの挙げてけ" required>
         <% if (errors.title) { %><p class="field-error"><%= errors.title[0] %></p><% } %>
       </div>
       <div class="field-group">
-        <label for="body"><span>03</span><b>本文</b><small>思ったことや聞きたいことを、自由にどうぞ</small></label>
-        <div class="editor-shell"><div class="editor-toolbar"><span>B</span><span><i>I</i></span><span>“</span><span>↗</span></div><textarea id="body" name="body" rows="12" placeholder="ここから自由に書いてみよう…" required><%= values.body || '' %></textarea></div>
+        <label class="field-label" for="body">本文（&gt;&gt;1）</label>
+        <textarea id="body" name="body" rows="8" placeholder="思ったことや聞きたいことを自由にどうぞ" required><%= values.body || '' %></textarea>
         <% if (errors.body) { %><p class="field-error"><%= errors.body[0] %></p><% } %>
       </div>
       <div class="field-group">
-        <label for="tags"><span>04</span><b>タグ</b><small>カンマ区切りで5個まで</small></label>
+        <label class="field-label" for="tags">タグ <small>カンマ区切りで5個まで</small></label>
         <input id="tags" type="text" name="tags" value="<%= values.tags || '' %>" placeholder="暮らし, 質問, おすすめ">
       </div>
-      <div class="form-submit"><p>送る前に、個人情報や誰かが悲しくなる言葉がないかだけ確認してね。</p><div><a href="/">やめて戻る</a><button class="button button--primary" type="submit">みんなに公開する <span>↗</span></button></div></div>
+      <div class="form-submit">
+        <p>個人情報や誰かが悲しくなる言葉がないかだけ確認してね。</p>
+        <div><a class="plain-action" href="/">やめる</a><button class="button button--primary" type="submit">スレを立てる</button></div>
+      </div>
     </form>
   </div>
 </main>

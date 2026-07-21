@@ -1,18 +1,21 @@
 <%- include('partials/head') %>
-<main id="main" class="inner-main">
-  <section class="board-hero board-hero--<%= category.slug %>">
-    <div class="shell board-hero-inner">
-      <div class="board-glyph"><%= category.icon %></div>
-      <div><p>BOARD / <%= category.slug.toUpperCase() %></p><h1><%= category.name %></h1><span><%= category.description %></span></div>
-      <div class="board-total"><strong><%= formatNumber(category.threadCount) %></strong><span>話題</span></div>
+<main id="main" class="feed-layout feed-layout--single">
+  <div class="feed-column">
+    <div class="board-header board-header--<%= category.slug %>">
+      <div class="board-header-main">
+        <h1><span class="board-hash">#</span><%= category.name %></h1>
+        <p><%= category.description %></p>
+      </div>
+      <div class="board-header-meta"><strong><%= formatNumber(category.threadCount) %></strong><span>スレ</span></div>
     </div>
-  </section>
-  <section class="shell narrow-content">
-    <div class="feed-header"><div><p>CONVERSATIONS</p><h2>みんなの話題</h2></div><div class="feed-controls"><%- include('partials/sort-tabs', { basePath: '/boards/' + category.slug }) %><a class="round-create" href="/new" aria-label="話題をつくる">＋</a></div></div>
+    <div class="feed-top">
+      <%- include('partials/sort-tabs', { basePath: '/boards/' + category.slug }) %>
+      <a class="button button--primary board-new" href="/new">＋ スレ立て</a>
+    </div>
     <div class="thread-list">
-      <% if (!threads.length) { %><div class="empty-state"><span>◌</span><h2>ここはまだ静かみたい</h2><p>一番乗りで、好きな話をはじめてみよう。</p><a class="button button--primary" href="/new">話題をつくる</a></div><% } %>
+      <% if (!threads.length) { %><div class="empty-state"><span>◌</span><h2>ここはまだ静かみたい</h2><p>一番乗りでスレを立ててみよう。</p><a class="button button--primary" href="/new">スレを立てる</a></div><% } %>
       <% threads.forEach(function(thread) { %><%- include('partials/thread-card', { thread: thread }) %><% }) %>
     </div>
-  </section>
+  </div>
 </main>
 <%- include('partials/footer') %>

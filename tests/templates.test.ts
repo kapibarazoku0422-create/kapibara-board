@@ -12,6 +12,8 @@ const base = {
   flash: null,
   demoMode: false,
   unreadMessages: 2,
+  currentPath: '/',
+  navCategories: [{ id: 1, slug: 'general', name: '総合', description: '', icon: '総', color: '#000', threadCount: 1 }],
   formatNumber: (value: number) => String(value),
   formatDate: () => '今日',
 };
@@ -28,7 +30,7 @@ describe('social templates', () => {
       member,
       messages: [{ id: 'dm-1', senderId: 'user-b', recipientId: 'user-a', body: 'こんにちは', createdAt: new Date(), readAt: null }],
     });
-    expect(members).toContain('DMを送る');
+    expect(members).toContain('/messages/user-b');
     expect(messages).toContain('こんにちは');
     expect(conversation).toContain('data-live-dm');
   });
