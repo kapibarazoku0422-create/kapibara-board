@@ -95,7 +95,7 @@ app.use(async (req, res, next) => {
     }
   }
   res.locals.formatNumber = (value: number) => new Intl.NumberFormat('ja-JP', { notation: value > 9999 ? 'compact' : 'standard' }).format(value);
-  res.locals.formatDate = (value: Date) => new Intl.DateTimeFormat('ja-JP', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }).format(value);
+  res.locals.formatDate = (value: Date) => new Intl.DateTimeFormat('ja-JP', { timeZone: 'Asia/Tokyo', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }).format(value);
   delete req.session.flash;
   next();
 });
