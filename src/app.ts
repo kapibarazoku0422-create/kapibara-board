@@ -115,7 +115,7 @@ const authLimiter = rateLimit({ windowMs: 15 * 60_000, limit: 30, standardHeader
 
 function requireAuth(req: Request, res: Response, next: NextFunction) {
   if (req.isAuthenticated()) return next();
-  req.session.flash = { type: 'info', message: '話題を投稿するなら、Googleアカウントではじめよう。' };
+  req.session.flash = { type: 'info', message: 'ボードを作るなら、Googleアカウントではじめよう。' };
   return res.redirect('/');
 }
 
@@ -177,13 +177,13 @@ app.get('/', async (req, res) => {
 app.get('/boards/:slug', async (req, res) => {
   const sort = ['active', 'popular', 'new'].includes(String(req.query.sort)) ? String(req.query.sort) : 'active';
   const data = await repository.getCategory(req.params.slug, sort);
-  if (!data) return res.status(404).render('error', { title: 'そのボードは見つからなかったよ', status: 404, message: 'URLが合っているか、もう一度見てみてね。' });
+  if (!data) return res.status(404).render('error', { title: 'そのカテゴリは見つからなかったよ', status: 404, message: 'URLが合っているか、もう一度見てみてね。' });
   return res.render('board', { title: data.category.name, ...data, sort });
 });
 
 app.get('/threads/:id', async (req, res) => {
   const thread = await repository.getThread(String(req.params.id), req.user?.id);
-  if (!thread) return res.status(404).render('error', { title: 'その話題は見つからなかったよ', status: 404, message: '削除されたか、URLが変わったのかもしれません。' });
+  if (!thread) return res.status(404).render('error', { title: 'そのボードは見つからなかったよ', status: 404, message: '削除されたか、URLが変わったのかもしれません。' });
   return res.render('thread', { title: thread.title, thread });
 });
 
@@ -210,14 +210,14 @@ app.post('/quick-post', writeLimiter, requireAuth, requireDatabase, async (req, 
 
 app.get('/new', requireAuth, async (_req, res) => {
   const categories = await repository.getCategories();
-  res.render('new', { title: '話題をつくる', categories, values: {}, errors: {} });
+  res.render('new', { title: 'ボードを作る', categories, values: {}, errors: {} });
 });
 
 app.post('/threads', writeLimiter, requireAuth, requireDatabase, async (req, res) => {
   const parsed = threadInput.safeParse(req.body);
   if (!parsed.success) {
     const categories = await repository.getCategories();
-    return res.status(422).render('new', { title: '話題をつくる', categories, values: req.body, errors: parsed.error.flatten().fieldErrors });
+    return res.status(422).render('new', { title: 'ボードを作る', categories, values: req.body, errors: parsed.error.flatten().fieldErrors });
   }
   const id = await repository.createThread({
     authorId: req.user!.id,
@@ -226,7 +226,7 @@ app.post('/threads', writeLimiter, requireAuth, requireDatabase, async (req, res
     body: parsed.data.body,
     tags: parsed.data.tags.split(',').map((tag) => tag.trim().replace(/^#/, '')).filter(Boolean),
   });
-  req.session.flash = { type: 'success', message: '話題を公開したよ！' };
+  req.session.flash = { type: 'success', message: 'ボードを公開したよ！' };
   return res.redirect(`/threads/${id}`);
 });
 
@@ -239,7 +239,7 @@ app.post('/threads/:id/posts', writeLimiter, requireAuth, requireDatabase, async
   }
   const post = await repository.createPost({ threadId, authorId: req.user!.id, body: parsed.data.body });
   publish(threadChannel(threadId), { type: 'post', post });
-  req.session.flash = { type: 'success', message: 'コメントを投稿したよ！' };
+  req.session.flash = { type: 'success', message: 'レスを投稿したよ！' };
   return res.redirect(`/threads/${threadId}#latest`);
 });
 

@@ -9,7 +9,7 @@ const demoUsers: User[] = [
 ];
 
 const demoCategories: Category[] = [
-  { id: 6, slug: 'general', name: '総合', description: 'すべてのジャンルの話題が集まる場所', icon: '◎', color: '#d35400', threadCount: 3951 },
+  { id: 6, slug: 'general', name: '総合', description: 'すべてのジャンルのボードが集まる場所', icon: '◎', color: '#d35400', threadCount: 3951 },
   { id: 1, slug: 'lounge', name: 'ラウンジ', description: '日常のこと、ふと思ったこと', icon: '☕', color: '#ff6b4a', threadCount: 1284 },
   { id: 2, slug: 'technology', name: 'テクノロジー', description: '開発・AI・ガジェットの話', icon: '⌘', color: '#6c5ce7', threadCount: 842 },
   { id: 3, slug: 'creative', name: 'クリエイティブ', description: '写真、音楽、文章、ものづくり', icon: '✦', color: '#e84393', threadCount: 516 },

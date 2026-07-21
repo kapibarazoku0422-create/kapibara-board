@@ -1,12 +1,12 @@
 <%- include('partials/head') %>
 <main id="main" class="feed-layout feed-layout--single">
   <div class="feed-column">
-    <nav class="breadcrumbs" aria-label="パンくず"><a href="/">ホーム</a><span>›</span><b>スレ立て</b></nav>
-    <div class="feed-top"><h1 class="feed-title">新しいスレを立てる</h1></div>
+    <nav class="breadcrumbs" aria-label="パンくず"><a href="/">ホーム</a><span>›</span><b>ボード作成</b></nav>
+    <div class="feed-top"><h1 class="feed-title">新しいボードを作る</h1></div>
     <form class="topic-form" method="post" action="/threads">
       <input type="hidden" name="_csrf" value="<%= csrfToken %>">
       <div class="field-group">
-        <label class="field-label" for="categoryId">ボードを選ぶ</label>
+        <label class="field-label" for="categoryId">カテゴリを選ぶ</label>
         <div class="category-options">
           <% categories.forEach(function(category) { %>
             <label class="category-option category-option--<%= category.slug %>"><input type="radio" name="categoryId" value="<%= category.id %>" <%= String(values.categoryId || '') === String(category.id) ? 'checked' : '' %> required><span class="board-hash">#</span><strong><%= category.name %></strong></label>
@@ -15,7 +15,7 @@
         <% if (errors.categoryId) { %><p class="field-error"><%= errors.categoryId[0] %></p><% } %>
       </div>
       <div class="field-group">
-        <label class="field-label" for="title">スレタイ</label>
+        <label class="field-label" for="title">タイトル</label>
         <input class="large-input" id="title" type="text" name="title" value="<%= values.title || '' %>" placeholder="例：最近ハマってるもの挙げてけ" required>
         <% if (errors.title) { %><p class="field-error"><%= errors.title[0] %></p><% } %>
       </div>
@@ -30,7 +30,7 @@
       </div>
       <div class="form-submit">
         <p>個人情報や誰かが悲しくなる言葉がないかだけ確認してね。</p>
-        <div><a class="plain-action" href="/">やめる</a><button class="button button--primary" type="submit">スレを立てる</button></div>
+        <div><a class="plain-action" href="/">やめる</a><button class="button button--primary" type="submit">ボードを作る</button></div>
       </div>
     </form>
   </div>

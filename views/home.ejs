@@ -14,7 +14,7 @@
           <label class="visually-hidden" for="quick-post-body">いまどうしてる？</label>
           <textarea id="quick-post-body" name="body" rows="1" placeholder="いまどうしてる？" required></textarea>
           <div class="quick-post-bottom">
-            <span>「総合」にスレとして投稿されます</span>
+            <span>「総合」にボードとして投稿されます</span>
             <button class="button button--primary" type="submit">投稿</button>
           </div>
         </div>
@@ -28,7 +28,7 @@
 
     <div class="thread-list" id="latest">
       <% threads.forEach(function(thread) { %><%- include('partials/thread-card', { thread: thread }) %><% }) %>
-      <% if (!threads.length) { %><div class="empty-state"><span>◌</span><h2>まだスレがありません</h2><p>最初のスレを立ててみよう。</p></div><% } %>
+      <% if (!threads.length) { %><div class="empty-state"><span>◌</span><h2>まだボードがありません</h2><p>最初のボードを作ってみよう。</p></div><% } %>
     </div>
   </div>
 
@@ -51,11 +51,11 @@
       <h2 class="rail-title">コミュニティ</h2>
       <div class="rail-stats">
         <div><strong><%= formatNumber(stats.members) %></strong><span>メンバー</span></div>
-        <div><strong><%= formatNumber(stats.threads) %></strong><span>スレ</span></div>
+        <div><strong><%= formatNumber(stats.threads) %></strong><span>ボード</span></div>
         <div><strong><%= formatNumber(stats.posts) %></strong><span>レス</span></div>
         <div><strong class="online-now"><i></i><%= formatNumber(stats.online) %></strong><span>オンライン</span></div>
       </div>
-      <% if (!currentUser) { %><a class="rail-cta" href="/auth/google">Googleで参加する →</a><% } else { %><a class="rail-cta" href="/new">スレを立てる →</a><% } %>
+      <% if (!currentUser) { %><a class="rail-cta" href="/auth/google">Googleで参加する →</a><% } else { %><a class="rail-cta" href="/new">ボードを作る →</a><% } %>
     </section>
   </aside>
 </main>

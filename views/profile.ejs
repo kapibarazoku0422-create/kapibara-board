@@ -7,12 +7,12 @@
       <form method="post" action="/logout"><input type="hidden" name="_csrf" value="<%= csrfToken %>"><button class="plain-action" type="submit">ログアウト</button></form>
     </section>
     <section class="profile-block">
-      <div class="result-heading"><h2>立てたスレ</h2><span><%= authored.length %>件</span></div>
-      <div class="thread-list"><% authored.forEach(function(thread) { %><%- include('partials/thread-card', { thread: thread }) %><% }) %><% if (!authored.length) { %><div class="empty-state empty-state--compact"><span>✎</span><h2>まだスレはありません</h2><a href="/new">最初のスレを立ててみる →</a></div><% } %></div>
+      <div class="result-heading"><h2>作ったボード</h2><span><%= authored.length %>件</span></div>
+      <div class="thread-list"><% authored.forEach(function(thread) { %><%- include('partials/thread-card', { thread: thread }) %><% }) %><% if (!authored.length) { %><div class="empty-state empty-state--compact"><span>✎</span><h2>まだボードはありません</h2><a href="/new">最初のボードを作ってみる →</a></div><% } %></div>
     </section>
     <section class="profile-block">
-      <div class="result-heading"><h2>保存したスレ</h2><span><%= bookmarked.length %>件</span></div>
-      <div class="thread-list"><% bookmarked.forEach(function(thread) { %><%- include('partials/thread-card', { thread: thread }) %><% }) %><% if (!bookmarked.length) { %><div class="empty-state empty-state--compact"><span>◇</span><h2>気になるスレを保存してみよう</h2><a href="/">スレを見つけにいく →</a></div><% } %></div>
+      <div class="result-heading"><h2>保存したボード</h2><span><%= bookmarked.length %>件</span></div>
+      <div class="thread-list"><% bookmarked.forEach(function(thread) { %><%- include('partials/thread-card', { thread: thread }) %><% }) %><% if (!bookmarked.length) { %><div class="empty-state empty-state--compact"><span>◇</span><h2>気になるボードを保存してみよう</h2><a href="/">ボードを見つけにいく →</a></div><% } %></div>
     </section>
   </div>
 </main>

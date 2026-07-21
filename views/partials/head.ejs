@@ -22,7 +22,7 @@
       </a>
       <form class="topbar-search" action="/search" method="get" role="search">
         <svg aria-hidden="true" viewBox="0 0 24 24"><path d="m21 21-4.35-4.35m2.35-5.65a8 8 0 1 1-16 0 8 8 0 0 1 16 0Z"/></svg>
-        <input type="search" name="q" placeholder="検索" aria-label="話題を検索">
+        <input type="search" name="q" placeholder="検索" aria-label="ボードを検索">
         <kbd>⌘K</kbd>
       </form>
       <nav class="topbar-actions" aria-label="メインナビゲーション">
@@ -34,7 +34,7 @@
             <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M21 15a4 4 0 0 1-4 4H8l-5 3V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4v8Z"/></svg>
             <% if (unreadMessages) { %><b><%= unreadMessages > 99 ? '99+' : unreadMessages %></b><% } %>
           </a>
-          <a class="post-button" href="/new"><span>＋</span><i>スレ立て</i></a>
+          <a class="post-button" href="/new"><span>＋</span><i>ボード作成</i></a>
           <a class="avatar-link" href="/me" aria-label="マイページ">
             <% if (currentUser.avatarUrl) { %><img src="<%= currentUser.avatarUrl %>" alt=""><% } else { %><span><%= currentUser.displayName.slice(0, 1) %></span><% } %>
           </a>
@@ -64,7 +64,7 @@
           <% } %>
         </nav>
         <div class="side-section">
-          <p class="side-heading">ボード</p>
+          <p class="side-heading">カテゴリ</p>
           <nav class="board-links">
             <% (navCategories || []).forEach(function(category) { %>
               <a class="board-link board-link--<%= category.slug %><%= currentPath === '/boards/' + category.slug ? ' is-active' : '' %>" href="/boards/<%= category.slug %>">
@@ -74,7 +74,7 @@
           </nav>
         </div>
         <% if (currentUser) { %>
-          <a class="side-new-thread" href="/new">＋ 新しいスレを立てる</a>
+          <a class="side-new-thread" href="/new">＋ 新しいボードを作る</a>
         <% } else { %>
           <div class="side-login-card">
             <p>参加すると書き込み・DM・いいねができます。</p>
