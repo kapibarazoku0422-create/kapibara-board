@@ -13,6 +13,7 @@ const base = {
   demoMode: false,
   unreadMessages: 2,
   currentPath: '/',
+  assetVersion: 'test',
   navCategories: [{ id: 1, slug: 'general', name: '総合', description: '', icon: '総', color: '#000', threadCount: 1 }],
   formatNumber: (value: number) => String(value),
   formatDate: () => '今日',

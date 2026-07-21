@@ -62,6 +62,8 @@ app.use(
 app.use(passport.initialize());
 app.use(passport.session());
 
+const assetVersion = (process.env.RENDER_GIT_COMMIT ?? Date.now().toString(36)).slice(0, 8);
+
 let navCategoriesCache: { data: Awaited<ReturnType<typeof repository.getCategories>>; expiresAt: number } | null = null;
 async function getNavCategories() {
   if (navCategoriesCache && navCategoriesCache.expiresAt > Date.now()) return navCategoriesCache.data;
@@ -75,6 +77,7 @@ app.use(async (req, res, next) => {
   res.locals.csrfToken = req.session.csrfToken;
   res.locals.currentUser = req.user ?? null;
   res.locals.currentPath = req.path;
+  res.locals.assetVersion = assetVersion;
   try {
     res.locals.navCategories = await getNavCategories();
   } catch {
