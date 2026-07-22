@@ -14,6 +14,7 @@ const base = {
   unreadMessages: 2,
   currentPath: '/',
   assetVersion: 'test',
+  myGroups: [{ id: 'group-1', name: '夜ふかし部', visibility: 'public' }],
   navCategories: [{ id: 1, slug: 'general', name: '総合', description: '', icon: '総', color: '#000', threadCount: 1 }],
   formatNumber: (value: number) => String(value),
   formatDate: () => '今日',
@@ -34,6 +35,37 @@ describe('social templates', () => {
     expect(members).toContain('/messages/user-b');
     expect(messages).toContain('こんにちは');
     expect(conversation).toContain('data-live-dm');
+  });
+
+  it('renders group list, group page, and group chat', async () => {
+    const group = {
+      id: 'group-1',
+      name: '夜ふかし部',
+      description: '深夜テンションで語る場所',
+      visibility: 'private' as const,
+      ownerId: 'user-a',
+      ownerName: 'あおい',
+      memberCount: 2,
+      boardCount: 1,
+      isMember: true,
+      isOwner: true,
+      isInvited: false,
+      createdAt: new Date(),
+      members: [{ id: 'user-a', displayName: 'あおい', avatarUrl: null, role: 'owner' as const }],
+      threads: [],
+    };
+    const list = await ejs.renderFile(path.join(views, 'groups.ejs'), { ...base, groups: [group] });
+    const page = await ejs.renderFile(path.join(views, 'group.ejs'), { ...base, group, inviteQuery: '', inviteCandidates: [] });
+    const chat = await ejs.renderFile(path.join(views, 'group-chat.ejs'), {
+      ...base,
+      group,
+      messages: [{ id: 'gm-1', groupId: 'group-1', senderId: 'user-a', senderName: 'あおい', senderAvatar: null, senderInitial: 'あ', body: 'こんばんは', createdAt: new Date() }],
+    });
+    expect(list).toContain('夜ふかし部');
+    expect(page).toContain('/groups/group-1/chat');
+    expect(page).toContain('メンバーを招待する');
+    expect(chat).toContain('data-live-group');
+    expect(chat).toContain('こんばんは');
   });
 
   it('renders the admin dashboard controls', async () => {

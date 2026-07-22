@@ -12,7 +12,7 @@ import { passport } from './auth.js';
 import { config } from './config.js';
 import { checkDatabase, pool } from './db.js';
 import * as repository from './repository.js';
-import { directMessageChannel, publish, subscribe, threadChannel } from './realtime.js';
+import { directMessageChannel, groupChannel, publish, subscribe, threadChannel } from './realtime.js';
 
 const app = express();
 
@@ -87,9 +87,15 @@ app.use(async (req, res, next) => {
   res.locals.demoMode = config.demoMode;
   res.locals.flash = req.session.flash ?? null;
   res.locals.unreadMessages = 0;
+  res.locals.myGroups = [];
   if (req.user) {
     try {
-      res.locals.unreadMessages = await repository.getUnreadMessageCount(req.user.id);
+      const [unread, myGroups] = await Promise.all([
+        repository.getUnreadMessageCount(req.user.id),
+        repository.getMyGroups(req.user.id),
+      ]);
+      res.locals.unreadMessages = unread;
+      res.locals.myGroups = myGroups;
     } catch {
       res.locals.unreadMessages = 0;
     }
@@ -154,12 +160,23 @@ function openEventStream(req: Request, res: Response, channel: string) {
   });
 }
 
+const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const isUuid = (value: string) => uuidPattern.test(value);
+
 const threadInput = z.object({
-  categoryId: z.coerce.number().int().positive(),
+  categoryId: z.coerce.number().int().positive().optional(),
+  groupId: z.string().regex(uuidPattern).optional(),
   title: z.string().trim().min(1).max(120),
   body: z.string().trim().min(1).max(100_000),
   tags: z.string().max(500).default(''),
 });
+const groupInput = z.object({
+  name: z.string().trim().min(1).max(60),
+  description: z.string().trim().max(300).default(''),
+  visibility: z.enum(['public', 'private']).default('public'),
+});
+const groupMessageInput = z.object({ body: z.string().trim().min(1).max(4000) });
+const inviteInput = z.object({ userId: z.string().regex(uuidPattern) });
 const postInput = z.object({ body: z.string().trim().min(1).max(100_000) });
 const quickPostInput = z.object({ body: z.string().trim().min(1).max(100_000) });
 const messageInput = z.object({ body: z.string().trim().min(1).max(50_000) });
@@ -182,8 +199,14 @@ app.get('/boards/:slug', async (req, res) => {
 });
 
 app.get('/threads/:id', async (req, res) => {
-  const thread = await repository.getThread(String(req.params.id), req.user?.id);
+  const id = String(req.params.id);
+  if (!isUuid(id) && pool) return res.status(404).render('error', { title: 'そのボードは見つからなかったよ', status: 404, message: '削除されたか、URLが変わったのかもしれません。' });
+  const thread = await repository.getThread(id, req.user?.id);
   if (!thread) return res.status(404).render('error', { title: 'そのボードは見つからなかったよ', status: 404, message: '削除されたか、URLが変わったのかもしれません。' });
+  if (thread.groupId && thread.groupVisibility === 'private') {
+    const member = req.user ? await repository.isGroupMember(thread.groupId, req.user.id) : false;
+    if (!member) return res.status(404).render('error', { title: 'そのボードは見つからなかったよ', status: 404, message: '非公開グループのボードは、メンバーだけが見られます。' });
+  }
   return res.render('thread', { title: thread.title, thread });
 });
 
@@ -208,23 +231,39 @@ app.post('/quick-post', writeLimiter, requireAuth, requireDatabase, async (req, 
   return res.redirect(`/threads/${id}`);
 });
 
-app.get('/new', requireAuth, async (_req, res) => {
+async function getGroupContext(groupId: string | undefined, userId: string) {
+  if (!groupId || !isUuid(groupId)) return null;
+  const member = await repository.isGroupMember(groupId, userId);
+  if (!member) return null;
+  return repository.getGroup(groupId, userId);
+}
+
+app.get('/new', requireAuth, async (req, res) => {
   const categories = await repository.getCategories();
-  res.render('new', { title: 'ボードを作る', categories, values: {}, errors: {} });
+  const group = await getGroupContext(typeof req.query.group === 'string' ? req.query.group : undefined, req.user!.id);
+  res.render('new', { title: 'ボードを作る', categories, group, values: {}, errors: {} });
 });
 
 app.post('/threads', writeLimiter, requireAuth, requireDatabase, async (req, res) => {
   const parsed = threadInput.safeParse(req.body);
-  if (!parsed.success) {
+  const group = await getGroupContext(typeof req.body.groupId === 'string' ? req.body.groupId : undefined, req.user!.id);
+  if (typeof req.body.groupId === 'string' && req.body.groupId && !group) {
+    req.session.flash = { type: 'error', message: 'そのグループには参加していないみたい。' };
+    return res.redirect('/groups');
+  }
+  const categoryId = group ? await repository.getCategoryId('general') : parsed.success ? parsed.data.categoryId : undefined;
+  if (!parsed.success || !categoryId) {
     const categories = await repository.getCategories();
-    return res.status(422).render('new', { title: 'ボードを作る', categories, values: req.body, errors: parsed.error.flatten().fieldErrors });
+    const errors = !parsed.success ? parsed.error.flatten().fieldErrors : { categoryId: ['カテゴリを選んでね'] };
+    return res.status(422).render('new', { title: 'ボードを作る', categories, group, values: req.body, errors });
   }
   const id = await repository.createThread({
     authorId: req.user!.id,
-    categoryId: parsed.data.categoryId,
+    categoryId,
     title: parsed.data.title,
     body: parsed.data.body,
     tags: parsed.data.tags.split(',').map((tag) => tag.trim().replace(/^#/, '')).filter(Boolean),
+    groupId: group?.id ?? null,
   });
   req.session.flash = { type: 'success', message: 'ボードを公開したよ！' };
   return res.redirect(`/threads/${id}`);
@@ -236,6 +275,11 @@ app.post('/threads/:id/posts', writeLimiter, requireAuth, requireDatabase, async
   if (!parsed.success) {
     req.session.flash = { type: 'error', message: 'ひとこと書いてから送ってね。' };
     return res.redirect(`/threads/${threadId}#reply`);
+  }
+  const threadGroup = await repository.getThreadGroup(threadId);
+  if (threadGroup && !(await repository.isGroupMember(threadGroup.groupId, req.user!.id))) {
+    req.session.flash = { type: 'error', message: 'グループに参加するとレスできるよ。' };
+    return res.redirect(`/groups/${threadGroup.groupId}`);
   }
   const post = await repository.createPost({ threadId, authorId: req.user!.id, body: parsed.data.body });
   publish(threadChannel(threadId), { type: 'post', post });
@@ -306,6 +350,130 @@ app.post('/messages/:userId', writeLimiter, requireAuth, requireDatabase, async 
   const message = await repository.createDirectMessage(req.user!.id, peerId, parsed.data.body);
   publish(directMessageChannel(req.user!.id, peerId), { type: 'message', message });
   return res.redirect(`/messages/${peerId}#latest`);
+});
+
+const groupNotFound = (res: Response) => res.status(404).render('error', { title: 'そのグループは見つからなかったよ', status: 404, message: '解散したか、URLが違うのかもしれません。' });
+
+app.get('/groups', requireAuth, requireDatabase, async (req, res) => {
+  const groups = await repository.getGroups(req.user!.id);
+  res.render('groups', { title: 'グループ', groups });
+});
+
+app.post('/groups', writeLimiter, requireAuth, requireDatabase, async (req, res) => {
+  const parsed = groupInput.safeParse(req.body);
+  if (!parsed.success) {
+    req.session.flash = { type: 'error', message: 'グループ名（60文字まで）を入れてね。' };
+    return res.redirect('/groups');
+  }
+  const id = await repository.createGroup(req.user!.id, parsed.data);
+  req.session.flash = { type: 'success', message: `グループ「${parsed.data.name}」を作ったよ！` };
+  return res.redirect(`/groups/${id}`);
+});
+
+app.get('/groups/:id', requireAuth, requireDatabase, async (req, res) => {
+  const id = String(req.params.id);
+  if (!isUuid(id)) return groupNotFound(res);
+  const group = await repository.getGroup(id, req.user!.id);
+  if (!group) return groupNotFound(res);
+  const inviteQuery = typeof req.query.invite_q === 'string' ? req.query.invite_q.slice(0, 80) : '';
+  const inviteCandidates = group.isOwner && inviteQuery ? await repository.searchInviteCandidates(id, inviteQuery) : [];
+  return res.render('group', { title: group.name, group, inviteQuery, inviteCandidates });
+});
+
+app.post('/groups/:id/join', writeLimiter, requireAuth, requireDatabase, async (req, res) => {
+  const id = String(req.params.id);
+  if (!isUuid(id)) return groupNotFound(res);
+  const joined = await repository.joinGroup(id, req.user!.id);
+  req.session.flash = joined
+    ? { type: 'success', message: 'グループに参加したよ！' }
+    : { type: 'error', message: 'このグループは招待制です。' };
+  return res.redirect(`/groups/${id}`);
+});
+
+app.post('/groups/:id/leave', writeLimiter, requireAuth, requireDatabase, async (req, res) => {
+  const id = String(req.params.id);
+  if (!isUuid(id)) return groupNotFound(res);
+  const left = await repository.leaveGroup(id, req.user!.id);
+  req.session.flash = left
+    ? { type: 'info', message: 'グループを抜けたよ。' }
+    : { type: 'error', message: 'オーナーは抜けられません。解散するか、そのまま見守ろう。' };
+  return res.redirect(left ? '/groups' : `/groups/${id}`);
+});
+
+app.post('/groups/:id/invite', writeLimiter, requireAuth, requireDatabase, async (req, res) => {
+  const id = String(req.params.id);
+  const parsed = inviteInput.safeParse(req.body);
+  if (!isUuid(id) || !parsed.success) return groupNotFound(res);
+  const invited = await repository.inviteToGroup(id, req.user!.id, parsed.data.userId);
+  req.session.flash = invited
+    ? { type: 'success', message: '招待を送ったよ！' }
+    : { type: 'error', message: '招待できなかったよ。すでにメンバーかもしれない。' };
+  return res.redirect(`/groups/${id}`);
+});
+
+app.post('/groups/:id/invites/accept', writeLimiter, requireAuth, requireDatabase, async (req, res) => {
+  const id = String(req.params.id);
+  if (!isUuid(id)) return groupNotFound(res);
+  const accepted = await repository.acceptGroupInvite(id, req.user!.id);
+  req.session.flash = accepted
+    ? { type: 'success', message: 'グループに参加したよ！' }
+    : { type: 'error', message: '招待が見つからなかったよ。' };
+  return res.redirect(accepted ? `/groups/${id}` : '/groups');
+});
+
+app.post('/groups/:id/invites/decline', writeLimiter, requireAuth, requireDatabase, async (req, res) => {
+  const id = String(req.params.id);
+  if (!isUuid(id)) return groupNotFound(res);
+  await repository.declineGroupInvite(id, req.user!.id);
+  req.session.flash = { type: 'info', message: '招待をお断りしたよ。' };
+  return res.redirect('/groups');
+});
+
+app.post('/groups/:id/delete', writeLimiter, requireAuth, requireDatabase, async (req, res) => {
+  const id = String(req.params.id);
+  if (!isUuid(id)) return groupNotFound(res);
+  const deleted = await repository.deleteGroup(id, req.user!.id);
+  req.session.flash = deleted
+    ? { type: 'info', message: 'グループを解散したよ。中のボードとチャットも削除されました。' }
+    : { type: 'error', message: 'グループを解散できるのはオーナーだけです。' };
+  return res.redirect(deleted ? '/groups' : `/groups/${id}`);
+});
+
+app.get('/groups/:id/chat', requireAuth, requireDatabase, async (req, res) => {
+  const id = String(req.params.id);
+  if (!isUuid(id)) return groupNotFound(res);
+  const group = await repository.getGroup(id, req.user!.id);
+  if (!group) return groupNotFound(res);
+  if (!group.isMember) {
+    req.session.flash = { type: 'info', message: 'チャットに入るにはグループに参加してね。' };
+    return res.redirect(`/groups/${id}`);
+  }
+  const messages = await repository.getGroupMessages(id);
+  return res.render('group-chat', { title: `${group.name} チャット`, group, messages });
+});
+
+app.post('/groups/:id/chat', writeLimiter, requireAuth, requireDatabase, async (req, res) => {
+  const id = String(req.params.id);
+  if (!isUuid(id)) return groupNotFound(res);
+  const parsed = groupMessageInput.safeParse(req.body);
+  if (!parsed.success) {
+    req.session.flash = { type: 'error', message: 'メッセージを書いてから送ってね。' };
+    return res.redirect(`/groups/${id}/chat`);
+  }
+  try {
+    const message = await repository.createGroupMessage(id, req.user!.id, parsed.data.body);
+    publish(groupChannel(id), { type: 'gmessage', message });
+  } catch {
+    req.session.flash = { type: 'error', message: 'チャットに参加できるのはメンバーだけです。' };
+    return res.redirect(`/groups/${id}`);
+  }
+  return res.redirect(`/groups/${id}/chat#latest`);
+});
+
+app.get('/groups/:id/chat/events', requireAuth, async (req, res) => {
+  const id = String(req.params.id);
+  if (!isUuid(id) || !(await repository.isGroupMember(id, req.user!.id))) return res.status(403).end();
+  return openEventStream(req, res, groupChannel(id));
 });
 
 app.get('/admin', requireAdmin, requireDatabase, async (_req, res) => {

@@ -1,0 +1,28 @@
+<%- include('partials/head') %>
+<main id="main" class="conversation-page" data-live-group="<%= group.id %>">
+  <section class="conversation-shell">
+    <header class="conversation-header">
+      <a href="/groups/<%= group.id %>" aria-label="グループへ戻る">←</a>
+      <span class="group-avatar" aria-hidden="true"><%= group.name.slice(0, 1) %></span>
+      <div><h1><%= group.name %><% if (group.visibility === 'private') { %> 🔒<% } %></h1><span><i></i> <%= formatNumber(group.memberCount) %>人のメンバー</span></div>
+    </header>
+    <div class="message-list message-list--group" id="live-chat" data-current-user="<%= currentUser.id %>">
+      <% messages.forEach(function(message, index) { %>
+        <article class="chat-row<%= message.senderId === currentUser.id ? ' is-mine' : '' %>" data-message-id="<%= message.id %>" id="<%= index === messages.length - 1 ? 'latest' : '' %>">
+          <%- include('partials/avatar', { avatar: message.senderAvatar, initial: message.senderInitial, size: 'medium' }) %>
+          <div class="chat-main">
+            <header><b><%= message.senderName %></b><time datetime="<%= message.createdAt.toISOString() %>"><%= formatDate(message.createdAt) %></time></header>
+            <p><%= message.body %></p>
+          </div>
+        </article>
+      <% }) %>
+      <% if (!messages.length) { %><div class="conversation-start"><span>👋</span><h2>まだ誰も話していません</h2><p>最初のひとことを送ってみよう。</p></div><% } %>
+    </div>
+    <form class="message-composer" method="post" action="/groups/<%= group.id %>/chat">
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+      <textarea name="body" rows="1" placeholder="#<%= group.name %> にメッセージを送信" required autofocus></textarea>
+      <button type="submit" aria-label="送信"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="m3 12 18-8-6 18-3-7-9-3Z"/></svg></button>
+    </form>
+  </section>
+</main>
+<%- include('partials/footer') %>

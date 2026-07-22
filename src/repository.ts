@@ -1,6 +1,6 @@
 import type { Profile } from 'passport-google-oauth20';
 import { pool } from './db.js';
-import type { AdminDashboard, Category, ConversationSummary, DirectMessage, HomeData, MemberSummary, Post, ThreadDetail, ThreadSummary, User } from './types.js';
+import type { AdminDashboard, Category, ConversationSummary, DirectMessage, GroupDetail, GroupMessage, GroupSummary, HomeData, MemberSummary, Post, ThreadDetail, ThreadSummary, User } from './types.js';
 
 const demoUsers: User[] = [
   { id: 'demo-a', email: 'aoi@example.com', displayName: 'あおい', avatarUrl: null, role: 'member' },
@@ -86,11 +86,11 @@ export async function getCategories(): Promise<Category[]> {
   const result = await pool.query(`
     SELECT c.id, c.slug, c.name, c.description, c.icon, c.color,
       CASE WHEN c.slug = 'general'
-        THEN (SELECT COUNT(*)::int FROM threads WHERE status IN ('published', 'locked'))
+        THEN (SELECT COUNT(*)::int FROM threads WHERE status IN ('published', 'locked') AND group_id IS NULL)
         ELSE COUNT(t.id)::int
       END AS thread_count
     FROM categories c
-    LEFT JOIN threads t ON t.category_id = c.id AND t.status IN ('published', 'locked')
+    LEFT JOIN threads t ON t.category_id = c.id AND t.status IN ('published', 'locked') AND t.group_id IS NULL
     GROUP BY c.id
     ORDER BY c.sort_order, c.id
   `);
@@ -124,12 +124,12 @@ export async function getHomeData(sort = 'active', categorySlug?: string): Promi
   if (categorySlug && categorySlug !== 'general') params.push(categorySlug);
   const [categories, threads, trending, counts] = await Promise.all([
     getCategories(),
-    pool.query(`${threadSelect} WHERE t.status IN ('published', 'locked') ${categoryWhere} ORDER BY ${order} LIMIT 30`, params),
-    pool.query(`${threadSelect} WHERE t.status IN ('published', 'locked') AND t.created_at > NOW() - INTERVAL '14 days' ORDER BY (t.like_count * 3 + t.reply_count * 2 + t.view_count / 20) DESC LIMIT 5`),
+    pool.query(`${threadSelect} WHERE t.status IN ('published', 'locked') AND t.group_id IS NULL ${categoryWhere} ORDER BY ${order} LIMIT 30`, params),
+    pool.query(`${threadSelect} WHERE t.status IN ('published', 'locked') AND t.group_id IS NULL AND t.created_at > NOW() - INTERVAL '14 days' ORDER BY (t.like_count * 3 + t.reply_count * 2 + t.view_count / 20) DESC LIMIT 5`),
     pool.query(`SELECT
       (SELECT COUNT(*) FROM users WHERE status = 'active')::int AS members,
-      (SELECT COUNT(*) FROM threads WHERE status IN ('published', 'locked'))::int AS threads,
-      (SELECT COUNT(*) FROM posts WHERE status = 'published')::int AS posts`),
+      (SELECT COUNT(*) FROM threads WHERE status IN ('published', 'locked') AND group_id IS NULL)::int AS threads,
+      (SELECT COUNT(*) FROM posts p JOIN threads pt ON pt.id = p.thread_id WHERE p.status = 'published' AND pt.group_id IS NULL)::int AS posts`),
   ]);
   return {
     categories,
@@ -154,6 +154,7 @@ export async function searchThreads(query: string): Promise<ThreadSummary[]> {
   }
   const result = await pool.query(`${threadSelect}
     WHERE t.status = 'published'
+      AND t.group_id IS NULL
       AND (
         t.search_document @@ websearch_to_tsquery('simple', $1)
         OR t.title ILIKE '%' || $1 || '%'
@@ -182,12 +183,14 @@ export async function getThread(id: string, viewerId?: string): Promise<ThreadDe
       ];
       return { id: `demo-post-${index}`, body: samples[index % samples.length]!, authorId: author.id, authorName: author.displayName, authorAvatar: null, authorInitial: author.displayName.slice(0, 1), authorRole: author.role, createdAt: new Date(now - (120 - index * 12) * 60_000), isSolution: index === 1, number: index + 1 };
     });
-    return { ...summary, body: summary.excerpt, authorId: originalAuthor.id, likedByViewer: false, bookmarkedByViewer: false, status: 'published', posts: replies };
+    return { ...summary, body: summary.excerpt, authorId: originalAuthor.id, likedByViewer: false, bookmarkedByViewer: false, status: 'published', posts: replies, groupId: null, groupName: null, groupVisibility: null };
   }
 
   await pool.query(`UPDATE threads SET view_count = view_count + 1 WHERE id = $1 AND status IN ('published', 'locked')`, [id]);
   const [threadResult, postsResult] = await Promise.all([
-    pool.query(`${threadSelect.replace('SELECT t.id,', `SELECT t.author_id, t.body, t.status, t.id,`)}
+    pool.query(`${threadSelect
+      .replace('SELECT t.id,', `SELECT t.author_id, t.body, t.status, t.group_id, g.name AS group_name, g.visibility AS group_visibility, t.id,`)
+      .replace('FROM threads t', 'FROM threads t LEFT JOIN groups g ON g.id = t.group_id')}
       WHERE t.id = $1 AND t.status IN ('published', 'locked')`, [id]),
     pool.query(`SELECT p.id, p.body, p.author_id, p.created_at, p.is_solution,
         u.display_name AS author_name, u.avatar_url AS author_avatar, u.role AS author_role,
@@ -211,6 +214,9 @@ export async function getThread(id: string, viewerId?: string): Promise<ThreadDe
     likedByViewer: Boolean(liked.rowCount),
     bookmarkedByViewer: Boolean(bookmarked.rowCount),
     status: String(row.status) as 'published' | 'locked',
+    groupId: row.group_id ? String(row.group_id) : null,
+    groupName: row.group_name ? String(row.group_name) : null,
+    groupVisibility: row.group_visibility ? (String(row.group_visibility) as 'public' | 'private') : null,
     posts: postsResult.rows.map((post) => {
       const name = String(post.author_name);
       return { id: String(post.id), body: String(post.body), authorId: String(post.author_id), authorName: name, authorAvatar: post.author_avatar ? String(post.author_avatar) : null, authorInitial: name.slice(0, 1).toUpperCase(), authorRole: post.author_role, createdAt: new Date(post.created_at), isSolution: Boolean(post.is_solution), number: Number(post.number) } as Post;
@@ -218,12 +224,12 @@ export async function getThread(id: string, viewerId?: string): Promise<ThreadDe
   };
 }
 
-export async function createThread(input: { authorId: string; categoryId: number; title: string; body: string; tags: string[] }): Promise<string> {
+export async function createThread(input: { authorId: string; categoryId: number; title: string; body: string; tags: string[]; groupId?: string | null }): Promise<string> {
   if (!pool) throw new Error('Database is not connected');
   const result = await pool.query(
-    `INSERT INTO threads (author_id, category_id, title, body, tags)
-     VALUES ($1, $2, $3, $4, $5) RETURNING id`,
-    [input.authorId, input.categoryId, input.title, input.body, input.tags.slice(0, 5)],
+    `INSERT INTO threads (author_id, category_id, title, body, tags, group_id)
+     VALUES ($1, $2, $3, $4, $5, $6) RETURNING id`,
+    [input.authorId, input.categoryId, input.title, input.body, input.tags.slice(0, 5), input.groupId ?? null],
   );
   return String(result.rows[0].id);
 }
@@ -495,6 +501,229 @@ export async function updateUserStatus(userId: string, status: 'active' | 'suspe
 export async function updateReportStatus(reportId: string, status: 'reviewing' | 'resolved' | 'dismissed'): Promise<void> {
   if (!pool) throw new Error('Database is not connected');
   await pool.query('UPDATE reports SET status = $2 WHERE id = $1', [reportId, status]);
+}
+
+const groupSelect = `
+  SELECT g.id, g.name, g.description, g.visibility, g.owner_id, g.created_at, owner.display_name AS owner_name,
+    (SELECT COUNT(*)::int FROM group_members gm WHERE gm.group_id = g.id) AS member_count,
+    (SELECT COUNT(*)::int FROM threads t WHERE t.group_id = g.id AND t.status IN ('published', 'locked')) AS board_count,
+    EXISTS (SELECT 1 FROM group_members gm WHERE gm.group_id = g.id AND gm.user_id = $1) AS is_member,
+    EXISTS (SELECT 1 FROM group_invites gi WHERE gi.group_id = g.id AND gi.user_id = $1) AS is_invited
+  FROM groups g
+  JOIN users owner ON owner.id = g.owner_id
+`;
+
+function mapGroup(row: Record<string, unknown>, viewerId: string): GroupSummary {
+  return {
+    id: String(row.id),
+    name: String(row.name),
+    description: String(row.description ?? ''),
+    visibility: String(row.visibility) as 'public' | 'private',
+    ownerId: String(row.owner_id),
+    ownerName: String(row.owner_name),
+    memberCount: Number(row.member_count),
+    boardCount: Number(row.board_count),
+    isMember: Boolean(row.is_member),
+    isOwner: String(row.owner_id) === viewerId,
+    isInvited: Boolean(row.is_invited),
+    createdAt: new Date(String(row.created_at)),
+  };
+}
+
+export async function getGroups(viewerId: string): Promise<GroupSummary[]> {
+  if (!pool) return [];
+  const result = await pool.query(`${groupSelect}
+    WHERE g.visibility = 'public'
+      OR EXISTS (SELECT 1 FROM group_members gm WHERE gm.group_id = g.id AND gm.user_id = $1)
+      OR EXISTS (SELECT 1 FROM group_invites gi WHERE gi.group_id = g.id AND gi.user_id = $1)
+    ORDER BY is_member DESC, is_invited DESC, g.created_at DESC
+    LIMIT 100`, [viewerId]);
+  return result.rows.map((row) => mapGroup(row, viewerId));
+}
+
+export async function getMyGroups(viewerId: string): Promise<Array<{ id: string; name: string; visibility: 'public' | 'private' }>> {
+  if (!pool) return [];
+  const result = await pool.query(`SELECT g.id, g.name, g.visibility
+    FROM group_members gm JOIN groups g ON g.id = gm.group_id
+    WHERE gm.user_id = $1
+    ORDER BY gm.joined_at DESC LIMIT 12`, [viewerId]);
+  return result.rows.map((row) => ({ id: String(row.id), name: String(row.name), visibility: String(row.visibility) as 'public' | 'private' }));
+}
+
+export async function createGroup(ownerId: string, input: { name: string; description: string; visibility: 'public' | 'private' }): Promise<string> {
+  if (!pool) throw new Error('Database is not connected');
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    const inserted = await client.query(`INSERT INTO groups (name, description, visibility, owner_id)
+      VALUES ($1, $2, $3, $4) RETURNING id`, [input.name, input.description, input.visibility, ownerId]);
+    const groupId = String(inserted.rows[0].id);
+    await client.query(`INSERT INTO group_members (group_id, user_id, role) VALUES ($1, $2, 'owner')`, [groupId, ownerId]);
+    await client.query('COMMIT');
+    return groupId;
+  } catch (error) {
+    await client.query('ROLLBACK');
+    throw error;
+  } finally {
+    client.release();
+  }
+}
+
+export async function getGroup(id: string, viewerId: string): Promise<GroupDetail | null> {
+  if (!pool) return null;
+  const result = await pool.query(`${groupSelect} WHERE g.id = $2`, [viewerId, id]);
+  if (!result.rowCount) return null;
+  const summary = mapGroup(result.rows[0], viewerId);
+  const canView = summary.visibility === 'public' || summary.isMember;
+  if (!canView) return { ...summary, members: [], threads: [] };
+  const [members, threads] = await Promise.all([
+    pool.query(`SELECT u.id, u.display_name, u.avatar_url, gm.role
+      FROM group_members gm JOIN users u ON u.id = gm.user_id
+      WHERE gm.group_id = $1 AND u.status = 'active'
+      ORDER BY CASE WHEN gm.role = 'owner' THEN 0 ELSE 1 END, gm.joined_at
+      LIMIT 60`, [id]),
+    pool.query(`${threadSelect} WHERE t.group_id = $1 AND t.status IN ('published', 'locked')
+      ORDER BY t.is_pinned DESC, t.last_activity_at DESC LIMIT 50`, [id]),
+  ]);
+  return {
+    ...summary,
+    members: members.rows.map((row) => ({
+      id: String(row.id),
+      displayName: String(row.display_name),
+      avatarUrl: row.avatar_url ? String(row.avatar_url) : null,
+      role: String(row.role) as 'owner' | 'member',
+    })),
+    threads: threads.rows.map(mapThread),
+  };
+}
+
+export async function joinGroup(groupId: string, userId: string): Promise<boolean> {
+  if (!pool) throw new Error('Database is not connected');
+  const result = await pool.query(`INSERT INTO group_members (group_id, user_id)
+    SELECT g.id, $2 FROM groups g WHERE g.id = $1 AND g.visibility = 'public'
+    ON CONFLICT DO NOTHING RETURNING 1`, [groupId, userId]);
+  await pool.query('DELETE FROM group_invites WHERE group_id = $1 AND user_id = $2', [groupId, userId]);
+  return Boolean(result.rowCount);
+}
+
+export async function leaveGroup(groupId: string, userId: string): Promise<boolean> {
+  if (!pool) throw new Error('Database is not connected');
+  const result = await pool.query(`DELETE FROM group_members WHERE group_id = $1 AND user_id = $2 AND role <> 'owner' RETURNING 1`, [groupId, userId]);
+  return Boolean(result.rowCount);
+}
+
+export async function inviteToGroup(groupId: string, inviterId: string, targetUserId: string): Promise<boolean> {
+  if (!pool) throw new Error('Database is not connected');
+  const result = await pool.query(`INSERT INTO group_invites (group_id, user_id, invited_by)
+    SELECT $1, $3, $2 FROM groups g
+    WHERE g.id = $1 AND g.owner_id = $2
+      AND EXISTS (SELECT 1 FROM users WHERE id = $3 AND status = 'active')
+      AND NOT EXISTS (SELECT 1 FROM group_members gm WHERE gm.group_id = $1 AND gm.user_id = $3)
+    ON CONFLICT DO NOTHING RETURNING 1`, [groupId, inviterId, targetUserId]);
+  return Boolean(result.rowCount);
+}
+
+export async function acceptGroupInvite(groupId: string, userId: string): Promise<boolean> {
+  if (!pool) throw new Error('Database is not connected');
+  const result = await pool.query(`WITH invite AS (
+      DELETE FROM group_invites WHERE group_id = $1 AND user_id = $2 RETURNING group_id, user_id
+    )
+    INSERT INTO group_members (group_id, user_id)
+    SELECT group_id, user_id FROM invite
+    ON CONFLICT DO NOTHING RETURNING 1`, [groupId, userId]);
+  return Boolean(result.rowCount);
+}
+
+export async function declineGroupInvite(groupId: string, userId: string): Promise<void> {
+  if (!pool) throw new Error('Database is not connected');
+  await pool.query('DELETE FROM group_invites WHERE group_id = $1 AND user_id = $2', [groupId, userId]);
+}
+
+export async function deleteGroup(groupId: string, ownerId: string): Promise<boolean> {
+  if (!pool) throw new Error('Database is not connected');
+  const result = await pool.query('DELETE FROM groups WHERE id = $1 AND owner_id = $2 RETURNING 1', [groupId, ownerId]);
+  return Boolean(result.rowCount);
+}
+
+export async function isGroupMember(groupId: string, userId: string): Promise<boolean> {
+  if (!pool) return false;
+  const result = await pool.query('SELECT 1 FROM group_members WHERE group_id = $1 AND user_id = $2', [groupId, userId]);
+  return Boolean(result.rowCount);
+}
+
+export async function getThreadGroup(threadId: string): Promise<{ groupId: string; visibility: 'public' | 'private' } | null> {
+  if (!pool) return null;
+  const result = await pool.query(`SELECT g.id, g.visibility FROM threads t JOIN groups g ON g.id = t.group_id WHERE t.id = $1`, [threadId]);
+  if (!result.rowCount) return null;
+  return { groupId: String(result.rows[0].id), visibility: String(result.rows[0].visibility) as 'public' | 'private' };
+}
+
+export async function searchInviteCandidates(groupId: string, query = ''): Promise<MemberSummary[]> {
+  if (!pool) return [];
+  const cleaned = query.trim().slice(0, 80);
+  const result = await pool.query(`SELECT id, display_name, avatar_url, bio, role, created_at
+    FROM users u
+    WHERE u.status = 'active'
+      AND ($2 = '' OR u.display_name ILIKE '%' || $2 || '%')
+      AND NOT EXISTS (SELECT 1 FROM group_members gm WHERE gm.group_id = $1 AND gm.user_id = u.id)
+      AND NOT EXISTS (SELECT 1 FROM group_invites gi WHERE gi.group_id = $1 AND gi.user_id = u.id)
+    ORDER BY u.last_login_at DESC NULLS LAST, u.created_at DESC
+    LIMIT 20`, [groupId, cleaned]);
+  return result.rows.map((row) => ({
+    id: String(row.id),
+    displayName: String(row.display_name),
+    avatarUrl: row.avatar_url ? String(row.avatar_url) : null,
+    bio: row.bio ? String(row.bio) : null,
+    role: row.role,
+    createdAt: new Date(row.created_at),
+  }));
+}
+
+export async function getGroupMessages(groupId: string): Promise<GroupMessage[]> {
+  if (!pool) return [];
+  const result = await pool.query(`SELECT id, group_id, sender_id, body, created_at, display_name, avatar_url FROM (
+      SELECT m.id, m.group_id, m.sender_id, m.body, m.created_at, u.display_name, u.avatar_url
+      FROM group_messages m JOIN users u ON u.id = m.sender_id
+      WHERE m.group_id = $1
+      ORDER BY m.created_at DESC, m.id DESC LIMIT 200
+    ) recent ORDER BY created_at, id`, [groupId]);
+  return result.rows.map((row) => {
+    const name = String(row.display_name);
+    return {
+      id: String(row.id),
+      groupId: String(row.group_id),
+      senderId: String(row.sender_id),
+      senderName: name,
+      senderAvatar: row.avatar_url ? String(row.avatar_url) : null,
+      senderInitial: name.slice(0, 1).toUpperCase(),
+      body: String(row.body),
+      createdAt: new Date(row.created_at),
+    };
+  });
+}
+
+export async function createGroupMessage(groupId: string, senderId: string, body: string): Promise<GroupMessage> {
+  if (!pool) throw new Error('Database is not connected');
+  const result = await pool.query(`WITH inserted AS (
+      INSERT INTO group_messages (group_id, sender_id, body)
+      SELECT $1, $2, $3 FROM group_members gm WHERE gm.group_id = $1 AND gm.user_id = $2
+      RETURNING id, group_id, sender_id, body, created_at
+    )
+    SELECT i.id, i.group_id, i.sender_id, i.body, i.created_at, u.display_name, u.avatar_url
+    FROM inserted i JOIN users u ON u.id = i.sender_id`, [groupId, senderId, body]);
+  if (!result.rowCount) throw new Error('Not a member of this group');
+  const row = result.rows[0];
+  const name = String(row.display_name);
+  return {
+    id: String(row.id),
+    groupId: String(row.group_id),
+    senderId: String(row.sender_id),
+    senderName: name,
+    senderAvatar: row.avatar_url ? String(row.avatar_url) : null,
+    senderInitial: name.slice(0, 1).toUpperCase(),
+    body: String(row.body),
+    createdAt: new Date(row.created_at),
+  };
 }
 
 export async function findUserById(id: string): Promise<User | null> {

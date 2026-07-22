@@ -155,6 +155,55 @@
     });
   }
 
+  const liveGroup = document.querySelector('[data-live-group]');
+  if (liveGroup && window.EventSource) {
+    const chat = document.querySelector('#live-chat');
+    const currentUser = chat?.dataset.currentUser;
+    const source = new EventSource(`/groups/${liveGroup.dataset.liveGroup}/chat/events`);
+    source.addEventListener('update', (event) => {
+      const payload = JSON.parse(event.data);
+      if (payload.type !== 'gmessage' || !chat || chat.querySelector(`[data-message-id="${CSS.escape(payload.message.id)}"]`)) return;
+      const message = payload.message;
+      chat.querySelector('.conversation-start')?.remove();
+      chat.querySelector('#latest')?.removeAttribute('id');
+      const article = document.createElement('article');
+      article.className = `chat-row${message.senderId === currentUser ? ' is-mine' : ''}`;
+      article.dataset.messageId = message.id;
+      article.id = 'latest';
+
+      const avatar = document.createElement('span');
+      avatar.className = 'avatar avatar--medium';
+      if (message.senderAvatar) {
+        const image = document.createElement('img');
+        image.src = message.senderAvatar;
+        image.alt = '';
+        avatar.append(image);
+      } else {
+        const initial = document.createElement('span');
+        initial.textContent = message.senderInitial;
+        avatar.append(initial);
+      }
+
+      const main = document.createElement('div');
+      main.className = 'chat-main';
+      const header = document.createElement('header');
+      const name = document.createElement('b');
+      name.textContent = message.senderName;
+      const time = document.createElement('time');
+      time.dateTime = message.createdAt;
+      time.textContent = 'たった今';
+      header.append(name, time);
+      const body = document.createElement('p');
+      body.textContent = message.body;
+      main.append(header, body);
+
+      article.append(avatar, main);
+      chat.append(article);
+      chat.scrollTop = chat.scrollHeight;
+    });
+    chat.scrollTop = chat.scrollHeight;
+  }
+
   const liveDm = document.querySelector('[data-live-dm]');
   if (liveDm && window.EventSource) {
     const messages = document.querySelector('#live-messages');

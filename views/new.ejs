@@ -5,6 +5,10 @@
     <div class="feed-top"><h1 class="feed-title">新しいボードを作る</h1></div>
     <form class="topic-form" method="post" action="/threads">
       <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+      <% if (group) { %>
+        <input type="hidden" name="groupId" value="<%= group.id %>">
+        <div class="group-target-note"><span class="group-avatar" aria-hidden="true"><%= group.name.slice(0, 1) %></span>グループ「<b><%= group.name %></b>」のボードとして作成します<% if (group.visibility === 'private') { %>（メンバーだけが見られます）<% } %></div>
+      <% } else { %>
       <div class="field-group">
         <label class="field-label" for="categoryId">カテゴリを選ぶ</label>
         <div class="category-options">
@@ -14,6 +18,7 @@
         </div>
         <% if (errors.categoryId) { %><p class="field-error"><%= errors.categoryId[0] %></p><% } %>
       </div>
+      <% } %>
       <div class="field-group">
         <label class="field-label" for="title">タイトル</label>
         <input class="large-input" id="title" type="text" name="title" value="<%= values.title || '' %>" placeholder="例：最近ハマってるもの挙げてけ" required>

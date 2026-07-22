@@ -1,11 +1,19 @@
 <%- include('partials/head') %>
 <main id="main" class="feed-layout feed-layout--single thread-page" data-live-thread="<%= thread.id %>">
   <div class="feed-column">
-    <nav class="breadcrumbs" aria-label="パンくず"><a href="/">ホーム</a><span>›</span><a href="/boards/<%= thread.categorySlug %>">#<%= thread.categoryName %></a></nav>
+    <% if (thread.groupId) { %>
+      <nav class="breadcrumbs" aria-label="パンくず"><a href="/groups">グループ</a><span>›</span><a href="/groups/<%= thread.groupId %>"><%= thread.groupName %></a></nav>
+    <% } else { %>
+      <nav class="breadcrumbs" aria-label="パンくず"><a href="/">ホーム</a><span>›</span><a href="/boards/<%= thread.categorySlug %>">#<%= thread.categoryName %></a></nav>
+    <% } %>
 
     <article class="topic">
       <div class="topic-meta">
-        <a class="category-chip category-chip--<%= thread.categorySlug %>" href="/boards/<%= thread.categorySlug %>">#<%= thread.categoryName %></a>
+        <% if (thread.groupId) { %>
+          <a class="category-chip" href="/groups/<%= thread.groupId %>">👥 <%= thread.groupName %><%= thread.groupVisibility === 'private' ? ' 🔒' : '' %></a>
+        <% } else { %>
+          <a class="category-chip category-chip--<%= thread.categorySlug %>" href="/boards/<%= thread.categorySlug %>">#<%= thread.categoryName %></a>
+        <% } %>
         <% if (thread.isPinned) { %><span class="pinned-label">📌 固定</span><% } %>
         <% if (thread.status === 'locked') { %><span class="locked-label">🔒 受付終了</span><% } %>
       </div>

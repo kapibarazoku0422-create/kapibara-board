@@ -5,7 +5,7 @@ services:
     plan: free
     region: singapore
     buildCommand: npm ci && npm run build
-    startCommand: npm start
+    startCommand: node dist/scripts/migrate.js && npm start
     healthCheckPath: /health
     autoDeploy: true
     envVars:

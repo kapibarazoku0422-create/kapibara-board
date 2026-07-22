@@ -21,3 +21,7 @@ export function threadChannel(threadId: string) {
 export function directMessageChannel(firstUserId: string, secondUserId: string) {
   return `dm:${[firstUserId, secondUserId].sort().join(':')}`;
 }
+
+export function groupChannel(groupId: string) {
+  return `group:${groupId}`;
+}

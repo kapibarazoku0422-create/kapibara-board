@@ -1,0 +1,54 @@
+<%- include('partials/head') %>
+<main id="main" class="feed-layout feed-layout--single">
+  <div class="feed-column">
+    <div class="feed-top"><h1 class="feed-title">グループ</h1></div>
+
+    <details class="group-create">
+      <summary>＋ グループを作る</summary>
+      <form method="post" action="/groups">
+        <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+        <input type="text" name="name" maxlength="60" placeholder="グループ名（例：夜ふかし部）" required>
+        <textarea name="description" rows="2" maxlength="300" placeholder="どんなグループ？（任意）"></textarea>
+        <div class="group-create-bottom">
+          <div class="visibility-options">
+            <label><input type="radio" name="visibility" value="public" checked><span>🌐 公開</span></label>
+            <label><input type="radio" name="visibility" value="private"><span>🔒 非公開（招待制）</span></label>
+          </div>
+          <button class="button button--primary" type="submit">作成</button>
+        </div>
+      </form>
+    </details>
+
+    <% const invites = groups.filter(g => g.isInvited && !g.isMember); %>
+    <% if (invites.length) { %>
+      <section class="invite-section">
+        <h2>招待が届いています</h2>
+        <% invites.forEach(function(group) { %>
+          <div class="invite-row">
+            <span class="group-avatar" aria-hidden="true"><%= group.name.slice(0, 1) %></span>
+            <div><b><%= group.name %><% if (group.visibility === 'private') { %> 🔒<% } %></b><small><%= group.ownerName %>さんのグループ · <%= formatNumber(group.memberCount) %>人</small></div>
+            <form method="post" action="/groups/<%= group.id %>/invites/accept"><input type="hidden" name="_csrf" value="<%= csrfToken %>"><button class="button button--primary" type="submit">参加する</button></form>
+            <form method="post" action="/groups/<%= group.id %>/invites/decline"><input type="hidden" name="_csrf" value="<%= csrfToken %>"><button class="plain-action" type="submit">断る</button></form>
+          </div>
+        <% }) %>
+      </section>
+    <% } %>
+
+    <div class="group-list">
+      <% groups.filter(g => !(g.isInvited && !g.isMember)).forEach(function(group) { %>
+        <a class="group-row" href="/groups/<%= group.id %>">
+          <span class="group-avatar" aria-hidden="true"><%= group.name.slice(0, 1) %></span>
+          <div class="group-row-main">
+            <h2><%= group.name %><% if (group.visibility === 'private') { %><span class="group-lock">🔒</span><% } %><% if (group.isOwner) { %><span class="group-owner-badge">オーナー</span><% } else if (group.isMember) { %><span class="group-member-badge">参加中</span><% } %></h2>
+            <p><%= group.description || 'まだ説明はありません。' %></p>
+            <small><%= formatNumber(group.memberCount) %>人 · ボード<%= formatNumber(group.boardCount) %>件</small>
+          </div>
+        </a>
+      <% }) %>
+      <% if (!groups.length) { %>
+        <div class="empty-state"><span>👥</span><h2>まだグループがありません</h2><p>最初のグループを作って、仲間を集めよう。</p></div>
+      <% } %>
+    </div>
+  </div>
+</main>
+<%- include('partials/footer') %>

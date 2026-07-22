@@ -1,0 +1,74 @@
+<%- include('partials/head') %>
+<main id="main" class="feed-layout feed-layout--single">
+  <div class="feed-column">
+    <nav class="breadcrumbs" aria-label="パンくず"><a href="/groups">グループ</a><span>›</span><b><%= group.name %></b></nav>
+
+    <div class="group-header">
+      <span class="group-avatar group-avatar--large" aria-hidden="true"><%= group.name.slice(0, 1) %></span>
+      <div class="group-header-main">
+        <h1><%= group.name %><% if (group.visibility === 'private') { %><span class="group-lock">🔒</span><% } %></h1>
+        <p><%= group.description || 'まだ説明はありません。' %></p>
+        <small><%= group.ownerName %>さんのグループ · <%= formatNumber(group.memberCount) %>人 · ボード<%= formatNumber(group.boardCount) %>件</small>
+      </div>
+    </div>
+
+    <div class="group-actions">
+      <% if (group.isMember) { %>
+        <a class="button button--primary" href="/groups/<%= group.id %>/chat">💬 グループチャット</a>
+        <a class="plain-action" href="/new?group=<%= group.id %>">＋ ボード作成</a>
+        <% if (!group.isOwner) { %>
+          <form method="post" action="/groups/<%= group.id %>/leave"><input type="hidden" name="_csrf" value="<%= csrfToken %>"><button class="plain-action" type="submit">抜ける</button></form>
+        <% } else { %>
+          <form method="post" action="/groups/<%= group.id %>/delete" onsubmit="return confirm('グループを解散すると、中のボードとチャットも全部消えます。本当に解散する？')"><input type="hidden" name="_csrf" value="<%= csrfToken %>"><button class="plain-action group-delete" type="submit">解散する</button></form>
+        <% } %>
+      <% } else if (group.visibility === 'public') { %>
+        <form method="post" action="/groups/<%= group.id %>/join"><input type="hidden" name="_csrf" value="<%= csrfToken %>"><button class="button button--primary" type="submit">参加する</button></form>
+      <% } else if (group.isInvited) { %>
+        <form method="post" action="/groups/<%= group.id %>/invites/accept"><input type="hidden" name="_csrf" value="<%= csrfToken %>"><button class="button button--primary" type="submit">招待を受けて参加する</button></form>
+        <form method="post" action="/groups/<%= group.id %>/invites/decline"><input type="hidden" name="_csrf" value="<%= csrfToken %>"><button class="plain-action" type="submit">断る</button></form>
+      <% } %>
+    </div>
+
+    <% if (group.visibility === 'private' && !group.isMember) { %>
+      <div class="empty-state"><span>🔒</span><h2>ここは非公開グループです</h2><p><% if (group.isInvited) { %>招待が届いています。参加すると中が見られます。<% } else { %>メンバーからの招待があると参加できます。<% } %></p></div>
+    <% } else { %>
+      <% if (group.isOwner) { %>
+        <details class="invite-panel"<%= inviteQuery ? ' open' : '' %>>
+          <summary>✉ メンバーを招待する</summary>
+          <form method="get" action="/groups/<%= group.id %>" class="search-bar search-bar--inline">
+            <svg aria-hidden="true" viewBox="0 0 24 24"><path d="m21 21-4.35-4.35m2.35-5.65a8 8 0 1 1-16 0 8 8 0 0 1 16 0Z"/></svg>
+            <input type="search" name="invite_q" value="<%= inviteQuery %>" placeholder="名前で探す">
+            <button type="submit">検索</button>
+          </form>
+          <% if (inviteQuery && !inviteCandidates.length) { %><p class="invite-empty">招待できる人が見つかりませんでした。</p><% } %>
+          <% inviteCandidates.forEach(function(candidate) { %>
+            <div class="invite-row">
+              <%- include('partials/avatar', { avatar: candidate.avatarUrl, initial: candidate.displayName.slice(0, 1), size: 'medium' }) %>
+              <div><b><%= candidate.displayName %></b><small><%= candidate.bio || '' %></small></div>
+              <form method="post" action="/groups/<%= group.id %>/invite"><input type="hidden" name="_csrf" value="<%= csrfToken %>"><input type="hidden" name="userId" value="<%= candidate.id %>"><button class="button button--primary" type="submit">招待</button></form>
+            </div>
+          <% }) %>
+        </details>
+      <% } %>
+
+      <div class="member-strip" aria-label="メンバー">
+        <% group.members.slice(0, 14).forEach(function(member) { %>
+          <span class="member-chip" title="<%= member.displayName %>">
+            <%- include('partials/avatar', { avatar: member.avatarUrl, initial: member.displayName.slice(0, 1), size: 'small' }) %>
+            <%= member.displayName %><% if (member.role === 'owner') { %> ★<% } %>
+          </span>
+        <% }) %>
+        <% if (group.memberCount > 14) { %><span class="member-chip member-chip--more">+<%= group.memberCount - 14 %></span><% } %>
+      </div>
+
+      <div class="result-heading"><h2>グループのボード</h2><span><%= group.threads.length %>件</span></div>
+      <div class="thread-list">
+        <% group.threads.forEach(function(thread) { %><%- include('partials/thread-card', { thread: thread }) %><% }) %>
+        <% if (!group.threads.length) { %>
+          <div class="empty-state empty-state--compact"><span>◌</span><h2>まだボードがありません</h2><% if (group.isMember) { %><a href="/new?group=<%= group.id %>">最初のボードを作ってみる →</a><% } %></div>
+        <% } %>
+      </div>
+    <% } %>
+  </div>
+</main>
+<%- include('partials/footer') %>

@@ -60,6 +60,47 @@ export interface ThreadDetail extends ThreadSummary {
   bookmarkedByViewer: boolean;
   status: 'published' | 'locked';
   posts: Post[];
+  groupId: string | null;
+  groupName: string | null;
+  groupVisibility: 'public' | 'private' | null;
+}
+
+export interface GroupSummary {
+  id: string;
+  name: string;
+  description: string;
+  visibility: 'public' | 'private';
+  ownerId: string;
+  ownerName: string;
+  memberCount: number;
+  boardCount: number;
+  isMember: boolean;
+  isOwner: boolean;
+  isInvited: boolean;
+  createdAt: Date;
+}
+
+export interface GroupMember {
+  id: string;
+  displayName: string;
+  avatarUrl: string | null;
+  role: 'owner' | 'member';
+}
+
+export interface GroupDetail extends GroupSummary {
+  members: GroupMember[];
+  threads: ThreadSummary[];
+}
+
+export interface GroupMessage {
+  id: string;
+  groupId: string;
+  senderId: string;
+  senderName: string;
+  senderAvatar: string | null;
+  senderInitial: string;
+  body: string;
+  createdAt: Date;
 }
 
 export interface MemberSummary {
