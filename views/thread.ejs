@@ -34,8 +34,8 @@
       </div>
 
       <div class="topic-actions">
-        <form method="post" action="/threads/<%= thread.id %>/like"><input type="hidden" name="_csrf" value="<%= csrfToken %>"><button class="reaction-button<%= thread.likedByViewer ? ' is-active' : '' %>" type="submit"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M12 21C7 16.5 3 13.3 3 9.5A4.5 4.5 0 0 1 7.5 5c1.8 0 3.4 1 4.5 2.5C13.1 6 14.7 5 16.5 5A4.5 4.5 0 0 1 21 9.5c0 3.8-4 7-9 11.5Z"/></svg><b><%= formatNumber(thread.likeCount) %></b></button></form>
-        <form method="post" action="/threads/<%= thread.id %>/bookmark"><input type="hidden" name="_csrf" value="<%= csrfToken %>"><button class="plain-action<%= thread.bookmarkedByViewer ? ' is-active' : '' %>" type="submit"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M6 3h12v18l-6-4-6 4V3Z"/></svg><%= thread.bookmarkedByViewer ? '保存済み' : '保存' %></button></form>
+        <form method="post" action="/threads/<%= thread.id %>/like" data-async="like"><input type="hidden" name="_csrf" value="<%= csrfToken %>"><button class="reaction-button<%= thread.likedByViewer ? ' is-active' : '' %>" type="submit"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M12 21C7 16.5 3 13.3 3 9.5A4.5 4.5 0 0 1 7.5 5c1.8 0 3.4 1 4.5 2.5C13.1 6 14.7 5 16.5 5A4.5 4.5 0 0 1 21 9.5c0 3.8-4 7-9 11.5Z"/></svg><b><%= formatNumber(thread.likeCount) %></b></button></form>
+        <form method="post" action="/threads/<%= thread.id %>/bookmark" data-async="bookmark"><input type="hidden" name="_csrf" value="<%= csrfToken %>"><button class="plain-action<%= thread.bookmarkedByViewer ? ' is-active' : '' %>" type="submit"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M6 3h12v18l-6-4-6 4V3Z"/></svg><%= thread.bookmarkedByViewer ? '保存済み' : '保存' %></button></form>
         <button class="plain-action share-button" type="button" data-share-title="<%= thread.title %>"><svg aria-hidden="true" viewBox="0 0 24 24"><circle cx="18" cy="5" r="2"/><circle cx="6" cy="12" r="2"/><circle cx="18" cy="19" r="2"/><path d="m8 11 8-5m-8 7 8 5"/></svg>共有</button>
         <% if (currentUser) { %><details class="report-menu"><summary class="plain-action">⚑ 通報</summary><form method="post" action="/threads/<%= thread.id %>/report"><input type="hidden" name="_csrf" value="<%= csrfToken %>"><select name="reason" required><option value="">理由を選ぶ</option><option value="spam">スパム</option><option value="harassment">嫌がらせ</option><option value="privacy">個人情報</option><option value="dangerous">危険な内容</option><option value="other">その他</option></select><textarea name="detail" rows="2" placeholder="補足があればどうぞ"></textarea><button type="submit">管理者に知らせる</button></form></details><% } %>
         <span class="topic-views"><%= formatNumber(thread.viewCount) %> views</span>
@@ -72,7 +72,7 @@
         <% if (thread.status === 'locked') { %>
           <div class="login-prompt"><span>🔒</span><h2>このボードは受付を終了しました</h2><p>これまでのレスはそのまま読めます。</p></div>
         <% } else if (currentUser) { %>
-          <form class="composer-form" method="post" action="/threads/<%= thread.id %>/posts">
+          <form class="composer-form" method="post" action="/threads/<%= thread.id %>/posts" data-async="reply">
             <input type="hidden" name="_csrf" value="<%= csrfToken %>">
             <%- include('partials/avatar', { avatar: currentUser.avatarUrl, initial: currentUser.displayName.slice(0, 1), size: 'medium' }) %>
             <div class="composer-box">

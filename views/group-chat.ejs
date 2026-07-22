@@ -18,7 +18,7 @@
       <% }) %>
       <% if (!messages.length) { %><div class="conversation-start"><span>👋</span><h2>まだ誰も話していません</h2><p>最初のひとことを送ってみよう。</p></div><% } %>
     </div>
-    <form class="message-composer" method="post" action="/groups/<%= group.id %>/chat">
+    <form class="message-composer" method="post" action="/groups/<%= group.id %>/chat" data-async="chat">
       <input type="hidden" name="_csrf" value="<%= csrfToken %>">
       <textarea name="body" rows="1" placeholder="#<%= group.name %> にメッセージを送信" required autofocus></textarea>
       <button type="submit" aria-label="送信"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="m3 12 18-8-6 18-3-7-9-3Z"/></svg></button>

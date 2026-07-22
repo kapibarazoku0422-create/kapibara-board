@@ -12,7 +12,7 @@
       <%- include('partials/sort-tabs', { basePath: '/boards/' + category.slug }) %>
       <a class="button button--primary board-new" href="/new">＋ ボード作成</a>
     </div>
-    <div class="thread-list">
+    <div class="thread-list" data-live-feed="<%= category.slug %>">
       <% if (!threads.length) { %><div class="empty-state"><span>◌</span><h2>ここはまだ静かみたい</h2><p>一番乗りでボードを作ってみよう。</p><a class="button button--primary" href="/new">ボードを作る</a></div><% } %>
       <% threads.forEach(function(thread) { %><%- include('partials/thread-card', { thread: thread }) %><% }) %>
     </div>

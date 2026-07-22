@@ -269,7 +269,7 @@ export async function createPost(input: { threadId: string; authorId: string; bo
   }
 }
 
-export async function toggleLike(threadId: string, userId: string): Promise<boolean> {
+export async function toggleLike(threadId: string, userId: string): Promise<{ active: boolean; count: number }> {
   if (!pool) throw new Error('Database is not connected');
   const client = await pool.connect();
   try {
@@ -277,9 +277,9 @@ export async function toggleLike(threadId: string, userId: string): Promise<bool
     const deleted = await client.query('DELETE FROM thread_likes WHERE thread_id = $1 AND user_id = $2 RETURNING 1', [threadId, userId]);
     const active = !deleted.rowCount;
     if (active) await client.query('INSERT INTO thread_likes (thread_id, user_id) VALUES ($1, $2) ON CONFLICT DO NOTHING', [threadId, userId]);
-    await client.query(`UPDATE threads SET like_count = (SELECT COUNT(*) FROM thread_likes WHERE thread_id = $1) WHERE id = $1`, [threadId]);
+    const updated = await client.query(`UPDATE threads SET like_count = (SELECT COUNT(*) FROM thread_likes WHERE thread_id = $1) WHERE id = $1 RETURNING like_count`, [threadId]);
     await client.query('COMMIT');
-    return active;
+    return { active, count: Number(updated.rows[0]?.like_count ?? 0) };
   } catch (error) {
     await client.query('ROLLBACK');
     throw error;

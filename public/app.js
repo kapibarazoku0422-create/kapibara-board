@@ -80,154 +80,226 @@
     });
   });
 
+  const buildAvatar = (avatarUrl, initialText) => {
+    const avatar = document.createElement('span');
+    avatar.className = 'avatar avatar--medium';
+    if (avatarUrl) {
+      const image = document.createElement('img');
+      image.src = avatarUrl;
+      image.alt = '';
+      image.loading = 'lazy';
+      image.decoding = 'async';
+      avatar.append(image);
+    } else {
+      const initial = document.createElement('span');
+      initial.textContent = initialText;
+      avatar.append(initial);
+    }
+    return avatar;
+  };
+
+  const timeNow = (iso) => {
+    const time = document.createElement('time');
+    time.dateTime = iso;
+    time.textContent = 'たった今';
+    return time;
+  };
+
+  // --- thread replies (SSE + async post share this) ---
+  const replies = document.querySelector('#live-replies');
+  const insertReply = (post) => {
+    if (!replies || replies.querySelector(`[data-post-id="${CSS.escape(post.id)}"]`)) return;
+    const number = replies.querySelectorAll('[data-post-id]').length + 2;
+    replies.querySelector('.res-empty')?.remove();
+    replies.querySelector('#latest')?.removeAttribute('id');
+
+    const article = document.createElement('article');
+    article.className = 'res';
+    article.dataset.postId = post.id;
+    article.dataset.number = String(number);
+    article.id = 'latest';
+
+    const content = document.createElement('div');
+    content.className = 'res-main';
+    const header = document.createElement('header');
+    header.className = 'res-header';
+    const num = document.createElement('span');
+    num.className = 'res-num';
+    num.textContent = String(number);
+    const name = document.createElement('b');
+    name.className = 'res-name';
+    name.textContent = post.authorName;
+    header.append(num, name);
+    if (post.authorRole !== 'member') {
+      const role = document.createElement('span');
+      role.className = 'res-role res-role--staff';
+      role.textContent = post.authorRole === 'admin' ? '管理者' : 'モデレーター';
+      header.append(role);
+    }
+    header.append(timeNow(post.createdAt));
+
+    const body = document.createElement('div');
+    body.className = 'res-body rich-body';
+    body.textContent = post.body;
+
+    const footer = document.createElement('footer');
+    footer.className = 'res-footer';
+    const quote = document.createElement('button');
+    quote.type = 'button';
+    quote.className = 'mini-action quote-button';
+    quote.dataset.number = String(number);
+    quote.textContent = `↩ >>${number}`;
+    bindQuoteButton(quote);
+    footer.append(quote);
+
+    content.append(header, body, footer);
+    article.append(buildAvatar(post.authorAvatar, post.authorInitial), content);
+    replies.append(article);
+    const count = document.querySelector('[data-reply-count]');
+    if (count) count.textContent = new Intl.NumberFormat('ja-JP').format(replies.querySelectorAll('[data-post-id]').length);
+  };
+
   const liveThread = document.querySelector('[data-live-thread]');
   if (liveThread && window.EventSource) {
-    const replies = document.querySelector('#live-replies');
     const source = new EventSource(`/threads/${liveThread.dataset.liveThread}/events`);
     source.addEventListener('update', (event) => {
       const payload = JSON.parse(event.data);
-      if (payload.type !== 'post' || !replies || replies.querySelector(`[data-post-id="${CSS.escape(payload.post.id)}"]`)) return;
-      const post = payload.post;
-      const number = replies.querySelectorAll('[data-post-id]').length + 2;
-      replies.querySelector('.res-empty')?.remove();
-
-      const article = document.createElement('article');
-      article.className = 'res';
-      article.dataset.postId = post.id;
-      article.dataset.number = String(number);
-      replies.querySelector('#latest')?.removeAttribute('id');
-      article.id = 'latest';
-
-      const avatar = document.createElement('span');
-      avatar.className = 'avatar avatar--medium';
-      if (post.authorAvatar) {
-        const image = document.createElement('img');
-        image.src = post.authorAvatar;
-        image.alt = '';
-        avatar.append(image);
-      } else {
-        const initial = document.createElement('span');
-        initial.textContent = post.authorInitial;
-        avatar.append(initial);
-      }
-
-      const content = document.createElement('div');
-      content.className = 'res-main';
-      const header = document.createElement('header');
-      header.className = 'res-header';
-      const num = document.createElement('span');
-      num.className = 'res-num';
-      num.textContent = String(number);
-      const name = document.createElement('b');
-      name.className = 'res-name';
-      name.textContent = post.authorName;
-      header.append(num, name);
-      if (post.authorRole !== 'member') {
-        const role = document.createElement('span');
-        role.className = 'res-role res-role--staff';
-        role.textContent = post.authorRole === 'admin' ? '管理者' : 'モデレーター';
-        header.append(role);
-      }
-      const time = document.createElement('time');
-      time.dateTime = post.createdAt;
-      time.textContent = 'たった今';
-      header.append(time);
-
-      const body = document.createElement('div');
-      body.className = 'res-body rich-body';
-      body.textContent = post.body;
-
-      const footer = document.createElement('footer');
-      footer.className = 'res-footer';
-      const quote = document.createElement('button');
-      quote.type = 'button';
-      quote.className = 'mini-action quote-button';
-      quote.dataset.number = String(number);
-      quote.textContent = `↩ >>${number}`;
-      bindQuoteButton(quote);
-      footer.append(quote);
-
-      content.append(header, body, footer);
-      article.append(avatar, content);
-      replies.append(article);
-      const count = document.querySelector('[data-reply-count]');
-      if (count) count.textContent = new Intl.NumberFormat('ja-JP').format(replies.querySelectorAll('[data-post-id]').length);
+      if (payload.type === 'post') insertReply(payload.post);
     });
   }
+
+  // --- group chat ---
+  const chat = document.querySelector('#live-chat');
+  const insertChatMessage = (message) => {
+    if (!chat || chat.querySelector(`[data-message-id="${CSS.escape(message.id)}"]`)) return;
+    chat.querySelector('.conversation-start')?.remove();
+    chat.querySelector('#latest')?.removeAttribute('id');
+    const article = document.createElement('article');
+    article.className = `chat-row${message.senderId === chat.dataset.currentUser ? ' is-mine' : ''}`;
+    article.dataset.messageId = message.id;
+    article.id = 'latest';
+    const main = document.createElement('div');
+    main.className = 'chat-main';
+    const header = document.createElement('header');
+    const name = document.createElement('b');
+    name.textContent = message.senderName;
+    header.append(name, timeNow(message.createdAt));
+    const body = document.createElement('p');
+    body.textContent = message.body;
+    main.append(header, body);
+    article.append(buildAvatar(message.senderAvatar, message.senderInitial), main);
+    chat.append(article);
+    chat.scrollTop = chat.scrollHeight;
+  };
 
   const liveGroup = document.querySelector('[data-live-group]');
   if (liveGroup && window.EventSource) {
-    const chat = document.querySelector('#live-chat');
-    const currentUser = chat?.dataset.currentUser;
     const source = new EventSource(`/groups/${liveGroup.dataset.liveGroup}/chat/events`);
     source.addEventListener('update', (event) => {
       const payload = JSON.parse(event.data);
-      if (payload.type !== 'gmessage' || !chat || chat.querySelector(`[data-message-id="${CSS.escape(payload.message.id)}"]`)) return;
-      const message = payload.message;
-      chat.querySelector('.conversation-start')?.remove();
-      chat.querySelector('#latest')?.removeAttribute('id');
-      const article = document.createElement('article');
-      article.className = `chat-row${message.senderId === currentUser ? ' is-mine' : ''}`;
-      article.dataset.messageId = message.id;
-      article.id = 'latest';
-
-      const avatar = document.createElement('span');
-      avatar.className = 'avatar avatar--medium';
-      if (message.senderAvatar) {
-        const image = document.createElement('img');
-        image.src = message.senderAvatar;
-        image.alt = '';
-        avatar.append(image);
-      } else {
-        const initial = document.createElement('span');
-        initial.textContent = message.senderInitial;
-        avatar.append(initial);
-      }
-
-      const main = document.createElement('div');
-      main.className = 'chat-main';
-      const header = document.createElement('header');
-      const name = document.createElement('b');
-      name.textContent = message.senderName;
-      const time = document.createElement('time');
-      time.dateTime = message.createdAt;
-      time.textContent = 'たった今';
-      header.append(name, time);
-      const body = document.createElement('p');
-      body.textContent = message.body;
-      main.append(header, body);
-
-      article.append(avatar, main);
-      chat.append(article);
-      chat.scrollTop = chat.scrollHeight;
+      if (payload.type === 'gmessage') insertChatMessage(payload.message);
     });
-    chat.scrollTop = chat.scrollHeight;
+    if (chat) chat.scrollTop = chat.scrollHeight;
   }
+
+  // --- direct messages ---
+  const dmList = document.querySelector('#live-messages');
+  const insertDirectMessage = (message) => {
+    if (!dmList || dmList.querySelector(`[data-message-id="${CSS.escape(message.id)}"]`)) return;
+    dmList.querySelector('.conversation-start')?.remove();
+    dmList.querySelector('#latest')?.removeAttribute('id');
+    const article = document.createElement('article');
+    article.className = `message-bubble${message.senderId === dmList.dataset.currentUser ? ' is-mine' : ''}`;
+    article.dataset.messageId = message.id;
+    article.id = 'latest';
+    const body = document.createElement('p');
+    body.textContent = message.body;
+    article.append(body, timeNow(message.createdAt));
+    dmList.append(article);
+    dmList.scrollTop = dmList.scrollHeight;
+  };
 
   const liveDm = document.querySelector('[data-live-dm]');
   if (liveDm && window.EventSource) {
-    const messages = document.querySelector('#live-messages');
-    const currentUser = messages?.dataset.currentUser;
     const source = new EventSource(`/messages/${liveDm.dataset.liveDm}/events`);
     source.addEventListener('update', (event) => {
       const payload = JSON.parse(event.data);
-      if (payload.type !== 'message' || !messages || messages.querySelector(`[data-message-id="${CSS.escape(payload.message.id)}"]`)) return;
-      const message = payload.message;
-      messages.querySelector('.conversation-start')?.remove();
-      messages.querySelector('#latest')?.removeAttribute('id');
-      const article = document.createElement('article');
-      article.className = `message-bubble${message.senderId === currentUser ? ' is-mine' : ''}`;
-      article.dataset.messageId = message.id;
-      article.id = 'latest';
-      const body = document.createElement('p');
-      body.textContent = message.body;
-      const time = document.createElement('time');
-      time.dateTime = message.createdAt;
-      time.textContent = 'たった今';
-      article.append(body, time);
-      messages.append(article);
-      messages.scrollTop = messages.scrollHeight;
+      if (payload.type === 'message') insertDirectMessage(payload.message);
     });
-    messages.scrollTop = messages.scrollHeight;
+    if (dmList) dmList.scrollTop = dmList.scrollHeight;
   }
+
+  // --- live feed pill (home / board pages) ---
+  const feed = document.querySelector('[data-live-feed]');
+  if (feed && window.EventSource) {
+    const filter = feed.dataset.liveFeed;
+    const source = new EventSource('/feed/events');
+    let pill = null;
+    source.addEventListener('update', (event) => {
+      const payload = JSON.parse(event.data);
+      if (payload.type !== 'thread') return;
+      if (filter && filter !== 'general' && payload.categorySlug && payload.categorySlug !== filter) return;
+      if (pill) return;
+      pill = document.createElement('button');
+      pill.type = 'button';
+      pill.className = 'live-pill';
+      pill.textContent = '↻ 新しいボードがあります';
+      pill.addEventListener('click', () => location.reload());
+      feed.before(pill);
+    });
+  }
+
+  // --- async form submissions (fall back to normal submit on failure) ---
+  const clearTextarea = (form) => {
+    const textarea = form.querySelector('textarea');
+    if (!textarea) return;
+    textarea.value = '';
+    textarea.dispatchEvent(new Event('input'));
+    textarea.focus();
+  };
+
+  document.querySelectorAll('form[data-async]').forEach((form) => {
+    form.addEventListener('submit', async (event) => {
+      event.preventDefault();
+      const kind = form.dataset.async;
+      const submitButton = form.querySelector('[type="submit"]');
+      submitButton?.setAttribute('disabled', '');
+      try {
+        const response = await fetch(form.action, {
+          method: 'POST',
+          headers: { 'X-Requested-With': 'fetch' },
+          body: new URLSearchParams(new FormData(form)),
+        });
+        if (!response.ok) throw new Error(`status ${response.status}`);
+        const data = await response.json().catch(() => null);
+        if (kind === 'reply' && data?.post) {
+          insertReply(data.post);
+          clearTextarea(form);
+          document.querySelector('#latest')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        } else if (kind === 'dm' && data?.message) {
+          insertDirectMessage(data.message);
+          clearTextarea(form);
+        } else if (kind === 'chat' && data?.message) {
+          insertChatMessage(data.message);
+          clearTextarea(form);
+        } else if (kind === 'like' && typeof data?.active === 'boolean') {
+          const button = form.querySelector('button');
+          button.classList.toggle('is-active', data.active);
+          const count = button.querySelector('b');
+          if (count) count.textContent = new Intl.NumberFormat('ja-JP', { notation: data.count > 9999 ? 'compact' : 'standard' }).format(data.count);
+        } else if (kind === 'bookmark' && typeof data?.active === 'boolean') {
+          const button = form.querySelector('button');
+          button.classList.toggle('is-active', data.active);
+          button.lastChild.textContent = data.active ? '保存済み' : '保存';
+        } else {
+          throw new Error('unexpected response');
+        }
+      } catch (error) {
+        console.warn('Async submit failed; falling back', error);
+        HTMLFormElement.prototype.submit.call(form);
+      } finally {
+        submitButton?.removeAttribute('disabled');
+      }
+    });
+  });
 })();

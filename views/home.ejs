@@ -26,7 +26,7 @@
       </div>
     <% } %>
 
-    <div class="thread-list" id="latest">
+    <div class="thread-list" id="latest" data-live-feed="">
       <% threads.forEach(function(thread) { %><%- include('partials/thread-card', { thread: thread }) %><% }) %>
       <% if (!threads.length) { %><div class="empty-state"><span>◌</span><h2>まだボードがありません</h2><p>最初のボードを作ってみよう。</p></div><% } %>
     </div>

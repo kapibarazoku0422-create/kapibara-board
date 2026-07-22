@@ -12,7 +12,7 @@ import { passport } from './auth.js';
 import { config } from './config.js';
 import { checkDatabase, pool } from './db.js';
 import * as repository from './repository.js';
-import { directMessageChannel, groupChannel, publish, subscribe, threadChannel } from './realtime.js';
+import { directMessageChannel, groupChannel, publish, siteChannel, subscribe, threadChannel } from './realtime.js';
 
 const app = express();
 
@@ -188,6 +188,7 @@ function openEventStream(req: Request, res: Response, channel: string) {
 
 const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const isUuid = (value: string) => uuidPattern.test(value);
+const isAjax = (req: Request) => req.get('x-requested-with') === 'fetch';
 
 const threadInput = z.object({
   categoryId: z.coerce.number().int().positive().optional(),
@@ -253,6 +254,7 @@ app.post('/quick-post', writeLimiter, requireAuth, requireDatabase, async (req, 
   const firstLine = parsed.data.body.split(/\r?\n/).find(Boolean) ?? parsed.data.body;
   const title = firstLine.length > 70 ? `${firstLine.slice(0, 70)}…` : firstLine;
   const id = await repository.createThread({ authorId: req.user!.id, categoryId, title, body: parsed.data.body, tags: [] });
+  publish(siteChannel(), { type: 'thread', categorySlug: 'general' });
   req.session.flash = { type: 'success', message: '投稿したよ！' };
   return res.redirect(`/threads/${id}`);
 });
@@ -291,6 +293,10 @@ app.post('/threads', writeLimiter, requireAuth, requireDatabase, async (req, res
     tags: parsed.data.tags.split(',').map((tag) => tag.trim().replace(/^#/, '')).filter(Boolean),
     groupId: group?.id ?? null,
   });
+  if (!group) {
+    const categorySlug = (await getNavCategories()).find((category) => category.id === categoryId)?.slug ?? null;
+    publish(siteChannel(), { type: 'thread', categorySlug });
+  }
   req.session.flash = { type: 'success', message: 'ボードを公開したよ！' };
   return res.redirect(`/threads/${id}`);
 });
@@ -309,23 +315,27 @@ app.post('/threads/:id/posts', writeLimiter, requireAuth, requireDatabase, async
   }
   const post = await repository.createPost({ threadId, authorId: req.user!.id, body: parsed.data.body });
   publish(threadChannel(threadId), { type: 'post', post });
+  if (isAjax(req)) return res.json({ post });
   req.session.flash = { type: 'success', message: 'レスを投稿したよ！' };
   return res.redirect(`/threads/${threadId}#latest`);
 });
 
 app.get('/threads/:id/events', (req, res) => openEventStream(req, res, threadChannel(String(req.params.id))));
+app.get('/feed/events', (req, res) => openEventStream(req, res, siteChannel()));
 
 app.post('/threads/:id/like', writeLimiter, requireAuth, requireDatabase, async (req, res) => {
   const threadId = String(req.params.id);
-  await repository.toggleLike(threadId, req.user!.id);
-  res.redirect(`/threads/${threadId}`);
+  const result = await repository.toggleLike(threadId, req.user!.id);
+  if (isAjax(req)) return res.json(result);
+  return res.redirect(`/threads/${threadId}`);
 });
 
 app.post('/threads/:id/bookmark', writeLimiter, requireAuth, requireDatabase, async (req, res) => {
   const threadId = String(req.params.id);
   const active = await repository.toggleBookmark(threadId, req.user!.id);
+  if (isAjax(req)) return res.json({ active });
   req.session.flash = { type: 'success', message: active ? '「あとで読む」に入れたよ。' : '「あとで読む」から外したよ。' };
-  res.redirect(`/threads/${threadId}`);
+  return res.redirect(`/threads/${threadId}`);
 });
 
 app.post('/threads/:id/report', writeLimiter, requireAuth, requireDatabase, async (req, res) => {
@@ -377,6 +387,7 @@ app.post('/messages/:userId', writeLimiter, requireAuth, requireDatabase, async 
   const message = await repository.createDirectMessage(req.user!.id, peerId, parsed.data.body);
   invalidateUserHeader(peerId);
   publish(directMessageChannel(req.user!.id, peerId), { type: 'message', message });
+  if (isAjax(req)) return res.json({ message });
   return res.redirect(`/messages/${peerId}#latest`);
 });
 
@@ -496,7 +507,9 @@ app.post('/groups/:id/chat', writeLimiter, requireAuth, requireDatabase, async (
   try {
     const message = await repository.createGroupMessage(id, req.user!.id, parsed.data.body);
     publish(groupChannel(id), { type: 'gmessage', message });
+    if (isAjax(req)) return res.json({ message });
   } catch {
+    if (isAjax(req)) return res.status(403).json({ error: 'not-a-member' });
     req.session.flash = { type: 'error', message: 'チャットに参加できるのはメンバーだけです。' };
     return res.redirect(`/groups/${id}`);
   }

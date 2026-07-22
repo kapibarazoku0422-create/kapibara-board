@@ -14,7 +14,7 @@
       <% }) %>
       <% if (!messages.length) { %><div class="conversation-start"><span>👋</span><h2>最初のひとことを送ってみよう</h2><p>短いあいさつだけでも大丈夫。</p></div><% } %>
     </div>
-    <form class="message-composer" method="post" action="/messages/<%= member.id %>">
+    <form class="message-composer" method="post" action="/messages/<%= member.id %>" data-async="dm">
       <input type="hidden" name="_csrf" value="<%= csrfToken %>">
       <textarea name="body" rows="1" placeholder="@<%= member.displayName %> にメッセージを送信" required autofocus></textarea>
       <button type="submit" aria-label="送信"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="m3 12 18-8-6 18-3-7-9-3Z"/></svg></button>

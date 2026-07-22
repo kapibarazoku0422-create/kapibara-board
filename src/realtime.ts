@@ -25,3 +25,7 @@ export function directMessageChannel(firstUserId: string, secondUserId: string) 
 export function groupChannel(groupId: string) {
   return `group:${groupId}`;
 }
+
+export function siteChannel() {
+  return 'site';
+}
