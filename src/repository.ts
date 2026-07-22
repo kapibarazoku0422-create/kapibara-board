@@ -186,7 +186,7 @@ export async function getThread(id: string, viewerId?: string): Promise<ThreadDe
     return { ...summary, body: summary.excerpt, authorId: originalAuthor.id, likedByViewer: false, bookmarkedByViewer: false, status: 'published', posts: replies, groupId: null, groupName: null, groupVisibility: null };
   }
 
-  await pool.query(`UPDATE threads SET view_count = view_count + 1 WHERE id = $1 AND status IN ('published', 'locked')`, [id]);
+  void pool.query(`UPDATE threads SET view_count = view_count + 1 WHERE id = $1 AND status IN ('published', 'locked')`, [id]).catch(() => {});
   const [threadResult, postsResult] = await Promise.all([
     pool.query(`${threadSelect
       .replace('SELECT t.id,', `SELECT t.author_id, t.body, t.status, t.group_id, g.name AS group_name, g.visibility AS group_visibility, t.id,`)

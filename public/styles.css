@@ -499,6 +499,8 @@ svg { fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round
 
 @media (max-width: 680px) {
   body { padding-bottom: 58px; }
+  .topbar { background: var(--bg-alt); backdrop-filter: none; }
+  .feed-top { background: var(--bg); backdrop-filter: none; }
   .brand-word { display: none; }
   .topbar-search kbd { display: none; }
   .post-button i { display: none; }
@@ -515,7 +517,7 @@ svg { fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round
   .board-header { padding: 16px 12px; }
   .conversation-shell { height: calc(100vh - 52px - 58px); }
   .admin-stats { grid-template-columns: 1fr 1fr; }
-  .mobile-nav { position: fixed; bottom: 0; left: 0; right: 0; z-index: 60; display: flex; height: 58px; border-top: 1px solid var(--line); background: color-mix(in srgb, var(--bg-alt) 92%, transparent); backdrop-filter: blur(14px); }
+  .mobile-nav { position: fixed; bottom: 0; left: 0; right: 0; z-index: 60; display: flex; height: 58px; border-top: 1px solid var(--line); background: var(--bg-alt); }
   .mobile-nav a { position: relative; flex: 1; display: grid; place-items: center; color: var(--muted); }
   .mobile-nav a.is-active { color: var(--accent-strong); }
   .mobile-nav svg { width: 22px; }

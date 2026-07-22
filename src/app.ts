@@ -38,7 +38,15 @@ app.use(
 app.use(compression({ filter: (req, res) => req.headers.accept === 'text/event-stream' ? false : compression.filter(req, res) }));
 app.use(express.urlencoded({ extended: false, limit: '256kb' }));
 app.use(methodOverride('_method'));
-app.use(express.static(path.join(process.cwd(), 'public'), { maxAge: config.isProduction ? '7d' : 0, etag: true }));
+app.use(express.static(path.join(process.cwd(), 'public'), {
+  maxAge: config.isProduction ? '7d' : 0,
+  etag: true,
+  setHeaders(res) {
+    if (config.isProduction && (res.req as Request | undefined)?.query?.v) {
+      res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+    }
+  },
+}));
 
 const PgStore = connectPgSimple(session);
 app.use(
@@ -72,9 +80,29 @@ async function getNavCategories() {
   return data;
 }
 
+type UserHeaderData = { unread: number; myGroups: Awaited<ReturnType<typeof repository.getMyGroups>> };
+const userHeaderCache = new Map<string, UserHeaderData & { expiresAt: number }>();
+
+function invalidateUserHeader(userId: string) {
+  userHeaderCache.delete(userId);
+}
+
+async function getUserHeaderData(userId: string): Promise<UserHeaderData> {
+  const cached = userHeaderCache.get(userId);
+  if (cached && cached.expiresAt > Date.now()) return cached;
+  const [unread, myGroups] = await Promise.all([
+    repository.getUnreadMessageCount(userId),
+    repository.getMyGroups(userId),
+  ]);
+  if (userHeaderCache.size > 1000) userHeaderCache.clear();
+  const data = { unread, myGroups, expiresAt: Date.now() + 15_000 };
+  userHeaderCache.set(userId, data);
+  return data;
+}
+
 app.use(async (req, res, next) => {
-  if (!req.session.csrfToken) req.session.csrfToken = randomBytes(24).toString('hex');
-  res.locals.csrfToken = req.session.csrfToken;
+  if (req.user && !req.session.csrfToken) req.session.csrfToken = randomBytes(24).toString('hex');
+  res.locals.csrfToken = req.session.csrfToken ?? '';
   res.locals.currentUser = req.user ?? null;
   res.locals.currentPath = req.path;
   res.locals.assetVersion = assetVersion;
@@ -88,14 +116,12 @@ app.use(async (req, res, next) => {
   res.locals.flash = req.session.flash ?? null;
   res.locals.unreadMessages = 0;
   res.locals.myGroups = [];
-  if (req.user) {
+  const skipHeaderData = req.path === '/health' || req.path.endsWith('/events');
+  if (req.user && !skipHeaderData) {
     try {
-      const [unread, myGroups] = await Promise.all([
-        repository.getUnreadMessageCount(req.user.id),
-        repository.getMyGroups(req.user.id),
-      ]);
-      res.locals.unreadMessages = unread;
-      res.locals.myGroups = myGroups;
+      const header = await getUserHeaderData(req.user.id);
+      res.locals.unreadMessages = header.unread;
+      res.locals.myGroups = header.myGroups;
     } catch {
       res.locals.unreadMessages = 0;
     }
@@ -337,6 +363,7 @@ app.get('/messages/:userId/events', requireAuth, (req, res) => {
 app.get('/messages/:userId', requireAuth, requireDatabase, async (req, res) => {
   const conversation = await repository.getConversation(req.user!.id, String(req.params.userId));
   if (!conversation) return res.status(404).render('error', { title: '相手が見つからなかったよ', status: 404, message: 'メンバー一覧からもう一度探してみてね。' });
+  invalidateUserHeader(req.user!.id);
   return res.render('conversation', { title: `${conversation.member.displayName}さんとのDM`, ...conversation });
 });
 
@@ -348,6 +375,7 @@ app.post('/messages/:userId', writeLimiter, requireAuth, requireDatabase, async 
     return res.redirect(`/messages/${peerId}`);
   }
   const message = await repository.createDirectMessage(req.user!.id, peerId, parsed.data.body);
+  invalidateUserHeader(peerId);
   publish(directMessageChannel(req.user!.id, peerId), { type: 'message', message });
   return res.redirect(`/messages/${peerId}#latest`);
 });
@@ -366,6 +394,7 @@ app.post('/groups', writeLimiter, requireAuth, requireDatabase, async (req, res)
     return res.redirect('/groups');
   }
   const id = await repository.createGroup(req.user!.id, parsed.data);
+  invalidateUserHeader(req.user!.id);
   req.session.flash = { type: 'success', message: `グループ「${parsed.data.name}」を作ったよ！` };
   return res.redirect(`/groups/${id}`);
 });
@@ -384,6 +413,7 @@ app.post('/groups/:id/join', writeLimiter, requireAuth, requireDatabase, async (
   const id = String(req.params.id);
   if (!isUuid(id)) return groupNotFound(res);
   const joined = await repository.joinGroup(id, req.user!.id);
+  invalidateUserHeader(req.user!.id);
   req.session.flash = joined
     ? { type: 'success', message: 'グループに参加したよ！' }
     : { type: 'error', message: 'このグループは招待制です。' };
@@ -394,6 +424,7 @@ app.post('/groups/:id/leave', writeLimiter, requireAuth, requireDatabase, async 
   const id = String(req.params.id);
   if (!isUuid(id)) return groupNotFound(res);
   const left = await repository.leaveGroup(id, req.user!.id);
+  invalidateUserHeader(req.user!.id);
   req.session.flash = left
     ? { type: 'info', message: 'グループを抜けたよ。' }
     : { type: 'error', message: 'オーナーは抜けられません。解散するか、そのまま見守ろう。' };
@@ -415,6 +446,7 @@ app.post('/groups/:id/invites/accept', writeLimiter, requireAuth, requireDatabas
   const id = String(req.params.id);
   if (!isUuid(id)) return groupNotFound(res);
   const accepted = await repository.acceptGroupInvite(id, req.user!.id);
+  invalidateUserHeader(req.user!.id);
   req.session.flash = accepted
     ? { type: 'success', message: 'グループに参加したよ！' }
     : { type: 'error', message: '招待が見つからなかったよ。' };
@@ -433,6 +465,7 @@ app.post('/groups/:id/delete', writeLimiter, requireAuth, requireDatabase, async
   const id = String(req.params.id);
   if (!isUuid(id)) return groupNotFound(res);
   const deleted = await repository.deleteGroup(id, req.user!.id);
+  invalidateUserHeader(req.user!.id);
   req.session.flash = deleted
     ? { type: 'info', message: 'グループを解散したよ。中のボードとチャットも削除されました。' }
     : { type: 'error', message: 'グループを解散できるのはオーナーだけです。' };
